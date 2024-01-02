@@ -18,6 +18,18 @@ Server &Server::operator=(const Server &s) {
 
 int Server::getSocket() const { return (_socket); }
 
+void	Server::sendMessage(const int socket, const std::string &message) {
+    int send_res = send(socket, message.c_str(), message.size(), MSG_NOSIGNAL);
+    if (send_res == -1) {
+        switch (errno) {
+            case EPIPE:
+                return ;
+            default:
+                std_errore(OUTERR);
+        }
+    }
+}
+
 void    Server::initClients(void) {
     for (int i = 0; i < MAXCLIENTS; i++)
         _clients[i].setSocketFd(0);
@@ -89,8 +101,11 @@ void    Server::handleClientInput(Client &c) {
     int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
     if (valread == -1)
         std_errore(READERR);
-    // else if (valread == 0)
-    //     ;
+    else if (valread == 0) {
+        std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
+        c.setSocketFd(0);
+        return ;
+    }
     else {
         buffa[valread] = '\0';
         std::cout<<buffa;

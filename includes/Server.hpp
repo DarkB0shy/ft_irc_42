@@ -5,6 +5,7 @@
 #define MAXCLIENTS 10
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
+#define CLOSEDCONN "Connection closed from (ip, port): "
 #define BUFFASIZE 1025
 
 #define ERROR "Error: "
@@ -48,6 +49,7 @@ class   Server {
         std::string                     _pass;
         Client                          _clients[MAXCLIENTS];
     public:
+        void    sendMessage(const int socket, const std::string &message);
         void    startServer(void);
         void    clearSocketsSet(void);
         void    resetSocketSet(void);
