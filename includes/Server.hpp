@@ -8,7 +8,8 @@
 #define BUFFASIZE 1025
 
 #define ERROR "Error: "
-#define MESSERR "could not send message"
+#define OUTERR "could not send message"
+#define READERR "could not read message"
 #define WRONGARGS "usage: ./ircserv #port connection_pssw"
 #define NOSOCKET "socket could not be created"
 #define NOSOCKETFLAGS "socket could not be set to non-blocking mode"
@@ -24,7 +25,7 @@
 #include <arpa/inet.h>      // inetitoa, ntohs, ...
 #include <csignal>
 #include <sys/select.h>     // FD_ZERO, ...
-#include <vector>
+#include <cstring>
 
 typedef struct	s_socket
 {

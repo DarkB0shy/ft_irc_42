@@ -9,8 +9,15 @@ void    std_errore(const char *err) {
 static void	handleSigInt(int signal) {exit(0);}
 
 void	sendMessage(const int socket, const std::string &message) {
-	if (send(socket, message.c_str(), message.size(), 0) == -1)
-        std_errore(MESSERR);
+    int send_res = send(socket, message.c_str(), message.size(), MSG_NOSIGNAL);
+    if (send_res == -1) {
+        switch (errno) {
+            case EPIPE:
+                return ;
+            default:
+                std_errore(OUTERR);
+        }
+    }
 }
 
 int main (int argc, char **argv) {

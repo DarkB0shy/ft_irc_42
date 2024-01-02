@@ -72,28 +72,30 @@ void    Server::handleNewConnection(void) {
 	if ((tempSocket.socket = accept(this->getSocket(), (struct sockaddr *)&tempSocket.address, (socklen_t*)&tempSocket.addrlen)) < 0)
         std_errore(NEWCONNERR);
 	std::cout<<CONNHANDLED<<inet_ntoa(tempSocket.address.sin_addr)<<", "<<ntohs(tempSocket.address.sin_port)<<std::endl;
-    // Adds the new socket to this->_clients
+    // Adds the temp socket to this->_clients
 	for (int i = 0; i < MAXCLIENTS; i++) {
 		if( _clients[i].getSocketFd() == 0 ) {
 			_clients[i].setSocketFd(tempSocket.socket);
 			_clients[i].setIpAddress(inet_ntoa(tempSocket.address.sin_addr));
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
-			// sendMessage(_clients[i].getSocketFd(), "Hey! :)");
             break;
 		}
 	}
 }
 
 void    Server::handleClientInput(Client &c) {
-    int     valread;
     char    buffa[BUFFASIZE];
 
-    if ((valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0)) <= 0)
-        ;
-    // else {
-    buffa[valread] = '\0';
-    std::cout<<buffa;
-    // }
+    int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
+    if (valread == -1)
+        std_errore(READERR);
+    // else if (valread == 0)
+    //     ;
+    else {
+        buffa[valread] = '\0';
+        std::cout<<buffa;
+        sendMessage(c.getSocketFd(), "Sup\r\n");
+    }
 }
 
 void    Server::runServer(void) {
