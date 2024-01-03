@@ -10,11 +10,12 @@
 
 #define WRONGARGS "usage: ./ircserv #port connection_pssw"
 #define WRONGPORT "the #port is invalid"
+#define WRONGPASS "invalid password"
 #define NOSOCKET "socket could not be created"
 #define NOSOCKETFLAGS "socket could not be set to non-blocking mode"
 #define PORTNOTBINDED "socket could not be binded to local port"
 #define NOTLISTENING "socket could not start listening for incoming connections"
-#define FDSETERROR "could not fetch proper file descriptors"
+#define FDSETERROR "could not fetch file descriptors"
 #define NEWCONNERR "could not establish new connection"
 #define OUTERR "could not send message"
 #define READERR "could not read message"

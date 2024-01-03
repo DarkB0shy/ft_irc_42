@@ -7,8 +7,7 @@ Client::Client(int socketFd) {_socketFd = socketFd;}
 Client::Client (const Client &c) {*this = c;}
 
 Client &Client::operator=(const Client &c) {
-    if (this == &c)
-        return (*this);
+    if (this == &c) return (*this);
     *this = Client(c);
     return (*this);
 }

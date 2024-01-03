@@ -12,13 +12,11 @@ int  parseInt(std::string str) {
 	int	i = 0;
 	int	ret;
 
-	while (str[i]==32 || (str[i] >= 9 && str[i] <= 13))
-		i++;
+	while (str[i]==32 || (str[i] >= 9 && str[i] <= 13)) i++;
 	ret = 0;
 	while (str[i])
 	{
-		if (!isdigit(str[i]))
-			return (-1);
+		if (!isdigit(str[i])) return (-1);
 		ret = ret * 10 + str[i++] - '0';
 	}
 	return (ret);
