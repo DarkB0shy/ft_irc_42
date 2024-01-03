@@ -8,16 +8,16 @@
 #define CLOSEDCONN "Connection closed from (ip, port): "
 #define BUFFASIZE 1025
 
-#define ERROR "Error: "
-#define OUTERR "could not send message"
-#define READERR "could not read message"
 #define WRONGARGS "usage: ./ircserv #port connection_pssw"
+#define WRONGPORT "the #port is invalid"
 #define NOSOCKET "socket could not be created"
 #define NOSOCKETFLAGS "socket could not be set to non-blocking mode"
 #define PORTNOTBINDED "socket could not be binded to local port"
 #define NOTLISTENING "socket could not start listening for incoming connections"
 #define FDSETERROR "could not fetch proper file descriptors"
 #define NEWCONNERR "could not establish new connection"
+#define OUTERR "could not send message"
+#define READERR "could not read message"
 
 #include "Client.hpp"
 #include <fcntl.h>
@@ -66,6 +66,5 @@ class   Server {
 };
 
 void    std_errore(const char *err);
-void	sendMessage(const int socket, const std::string &message);
 
 #endif

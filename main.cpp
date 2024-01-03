@@ -1,16 +1,10 @@
-#include "includes/Server.hpp"
-
-void    std_errore(const char *err) {
-    std::cerr<<ERROR;
-    std::cerr<<err<<std::endl;
-    exit(1);
-}
-
-static void	handleSigInt(int signal) {exit(0);}
+#include "Includes/Server.hpp"
+#include "Includes/Utils.hpp"
 
 int main (int argc, char **argv) {
 	if (argc != 3 ) {std_errore(WRONGARGS);}
-    int portNum = std::atoi(argv[1]);
+    int portNum = parseInt(argv[1]);
+	if (portNum <= 1024 || portNum > 65535) {std_errore(WRONGPORT);}
     Server newServer(portNum, argv[2]);
     signal(SIGINT, handleSigInt);
     newServer.startServer();

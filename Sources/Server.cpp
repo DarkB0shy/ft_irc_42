@@ -1,4 +1,4 @@
-#include "../includes/Server.hpp"
+#include "../Includes/Server.hpp"
 
 Server::Server (void) {};
 

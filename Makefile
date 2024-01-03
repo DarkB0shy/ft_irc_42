@@ -2,9 +2,9 @@ NAME = ircserv
 
 CC = c++
 
-CFLAGS = -Wall -Wextra -Werror -std=c++98 -g
+CFLAGS = -Wall -Wextra -Werror -std=c++98
 
-SRCS = main.cpp sources/Server.cpp sources/Client.cpp
+SRCS = main.cpp Sources/Server.cpp Sources/Client.cpp Sources/Utils.cpp
 
 OBJS = ${SRCS:.cpp=.o}
 
