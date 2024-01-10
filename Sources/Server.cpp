@@ -83,7 +83,6 @@ void    Server::handleClientInput(Client &c) {
     }
     else {
         buffa[valread] = '\0';
-        if (buffa.size() - 1 > 512) ;
         int parseRes = checkCommandOrPrefix(buffa);
         if (!parseRes) ;
         else if (parseRes == 1) handlePassCommand(checkPsswd(buffa), c);
