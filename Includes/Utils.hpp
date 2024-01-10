@@ -2,16 +2,12 @@
 #define UTILS_HPP
 
 #include <iostream>
-
-typedef struct	s_command
-{
-    std::string     prefix;
-    std::string     command;
-    std::string     parameters[10];
-}				t_command;
+#include <cstring>
 
 void	handleSigInt(int signal);
 void    std_errore(const char *err);
 int     parseInt(std::string str);
+int	    stringCompare(std::string first, std::string second);
+int     checkCommandOrPrefix(std::string msg);
 
 #endif

@@ -20,17 +20,19 @@
 #define OUTERR "could not send message"
 #define READERR "could not read message"
 
+#define ERR_NEEDMOREPARAMS "461\r\n"
+#define ERR_PASSWDMISMATCH "464\r\n"
+
 #include "Client.hpp"
+#include "Utils.hpp"
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/in.h>		// helds the struct sockaddr_in
 #include <arpa/inet.h>      // inetitoa, ntohs, ...
 #include <csignal>
 #include <sys/select.h>     // FD_ZERO, ...
-#include <cstring>
 
-typedef struct	s_socket
-{
+typedef struct	s_socket {
 	int					port;
 	int					socket;
 	int					fd;
@@ -50,22 +52,22 @@ class   Server {
         std::string                     _pass;
         Client                          _clients[MAXCLIENTS];
     public:
-        void    sendMessage(const int socket, const std::string &message);
-        void    startServer(void);
-        void    clearSocketsSet(void);
-        void    resetSocketSet(void);
-        void    runServer(void);
-        int     getSocket(void) const;
-		void    initClients(void);
-        void    handleNewConnection(void);
-        void    handleClientInput(Client &c);
+        void        sendMessage(const int socket, const std::string &message);
+        void        startServer(void);
+        void        clearSocketsSet(void);
+        void        resetSocketSet(void);
+        void        runServer(void);
+        int         getSocket(void) const;
+		void        initClients(void);
+        void        handleNewConnection(void);
+        void        handleClientInput(Client &c);
+        int         checkPsswd(std::string msg);
+        void        handlePassCommand(int num, Client &c);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);
         Server &operator=(const Server &s);
         ~Server();
 };
-
-void    std_errore(const char *err);
 
 #endif

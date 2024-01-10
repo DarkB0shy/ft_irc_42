@@ -58,6 +58,20 @@ void    Server::handleNewConnection(void) {
 	}
 }
 
+int Server::checkPsswd(std::string msg) {
+    int i = 0;
+    while (msg[i]) if (msg[i] != ' ') i++; else break;
+    if (i == msg.size()) return (461);
+    msg = msg.substr(msg.find(' '), msg.size()).erase(0, 1);
+    if (!stringCompare(msg, _pass)) return (0); else return (464);
+}
+
+void    Server::handlePassCommand(int num, Client &c) {
+    if (num == 0) sendMessage(c.getSocketFd(), "Yay!\r\n");
+    else if (num == 461) sendMessage(c.getSocketFd(), ERR_NEEDMOREPARAMS);
+    else if (num == 464) sendMessage(c.getSocketFd(), ERR_PASSWDMISMATCH);
+}
+
 void    Server::handleClientInput(Client &c) {
     char    buffa[BUFFASIZE];
     int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
@@ -69,8 +83,10 @@ void    Server::handleClientInput(Client &c) {
     }
     else {
         buffa[valread] = '\0';
-        std::cout<<buffa;
-        sendMessage(c.getSocketFd(), "Sup\r\n");
+        if (buffa.size() - 1 > 512) ;
+        int parseRes = checkCommandOrPrefix(buffa);
+        if (!parseRes) ;
+        else if (parseRes == 1) handlePassCommand(checkPsswd(buffa), c);
     }
 }
 

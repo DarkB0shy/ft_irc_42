@@ -14,13 +14,13 @@ Client &Client::operator=(const Client &c) {
 
 int Client::getSocketFd(void) const {return (_socketFd);}
 
-char*  Client::getIpAddress(void) const {return (_ipAddress);}
+std::string  Client::getIpAddress(void) const {return (_ipAddress);}
 
 u_int16_t   Client::getPort(void) const {return (_port);}
 
 void    Client::setSocketFd(int socketFd) {_socketFd = socketFd;}
 
-void    Client::setIpAddress(char* ipAddress) {_ipAddress = ipAddress;}
+void    Client::setIpAddress(std::string ipAddress) {_ipAddress = ipAddress;}
 
 void    Client::setPort(u_int16_t port) {_port = port;}
 
