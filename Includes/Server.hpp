@@ -1,12 +1,13 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#define MAXCONNECTIONS 50
 #define MAXCLIENTS 10
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
 #define CLOSEDCONN "Connection closed from (ip, port): "
 #define BUFFASIZE 1025
+#define PSSWD_OK "password correct"
+#define NNAME_OK "nickname set"
 
 #define WRONGARGS "usage: ./ircserv #port connection_pssw"
 #define WRONGPORT "the #port is invalid"
@@ -21,11 +22,11 @@
 #define READERR "could not read message"
 
 // #define ERR_NEEDMOREPARAMS "461\r\n"            // Only for registered users
-// #define ERR_ALREADYREGISTERED "462\r\n"
-// #define ERR_PASSWDMISMATCH "464\r\n"
-// #define ERR_NONICKNAMEGIVEN "431\r\n"
-// #define ERR_ERRONEOUSNICKNAME "432\r\n"
-// #define ERR_NICKNAMEINUSE "433\r\n"
+#define ERR_ALREADYREGISTERED "462"
+#define ERR_PASSWDMISMATCH "464"
+#define ERR_NONICKNAMEGIVEN "431"
+#define ERR_ERRONEOUSNICKNAME "432"
+#define ERR_NICKNAMEINUSE "433"
 
 #include "Client.hpp"
 #include "Utils.hpp"
@@ -66,10 +67,8 @@ class   Server {
 		void        initClients(void);
         void        handleNewConnection(void);
         void        handleClientInput(Client &c);
-        int         checkPsswd(std::string msg);
-        void        handlePassCommand(int num, Client &c);
-        int         checkNickname(std::string msg);
-        void        handleNickCommand(int num, Client &c, std::string msg);
+        std::string handlePassCommand(Client &c, char * psswd);
+        std::string handleNickCommand(Client &c, char * nname);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);

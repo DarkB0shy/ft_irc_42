@@ -1,4 +1,5 @@
 #include "../Includes/Message.hpp"
+#include "../Includes/Utils.hpp"
 
 Message::Message (void) {}
 
@@ -50,7 +51,7 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
     if (mssg[i] || mssg[i] == ' ') {
         if (mssg[i] == ' ') i++;
         while (mssg[i]) {
-            if (mssg[i] == '\0') break;
+            if (mssg[i] == '\0' || mssg[i] == '\r' || mssg[i] == '\n') break;
             tempParameters[j] = mssg[i];
             i++;
             j++;
@@ -61,10 +62,16 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
     return (tmpmssg);
 }
 
+int isAlpha(char c) {
+    if (c >= 'a' && c <= 'z') return (0);
+    else return (1);
+}
+
 int	checkMssgSyntax(std::string msg) {					// only checks for empty spaces between each word
-	if (msg.length() > 513) return (1);                 // maximum size is 512 + '\0'
+	if (!msg[0]) return (1);                            // checks if the string exists
+	if (isAlpha(msg[0]) && msg[0] != ':') return (1);
+    if (msg.length() > 513) return (1);                 // maximum size is 512 + '\0'
     int i = 0;
-	if (!msg[i]) return (1);                            // checks if the string exists
 	if (msg[i] == ' ') return (1);
     if (msg[i] == ':') {
 		i++;
@@ -78,6 +85,14 @@ int	checkMssgSyntax(std::string msg) {					// only checks for empty spaces betwe
     if (msg[i] == ' ' && (msg[i + 1] && (msg[i + 1] == '\r' || msg[i + 1] == '\n'))) return (1);                    // checks for single words with a space messages
     if (msg[i + 1] && msg[i + 1] == ' ') return (1);                                                                // checks if there are two consecutive spaces
     return (0);
+}
+
+int	stringCompare(char * first, std::string second) {
+	int	i = 0;
+	if (!first[0] || !second[0]) return (1);
+	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
+	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
+	return (1);
 }
 
 Message::~Message(void) {}
