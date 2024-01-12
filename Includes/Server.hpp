@@ -20,14 +20,19 @@
 #define OUTERR "could not send message"
 #define READERR "could not read message"
 
-#define ERR_NEEDMOREPARAMS "461\r\n"
-#define ERR_PASSWDMISMATCH "464\r\n"
+// #define ERR_NEEDMOREPARAMS "461\r\n"            // Only for registered users
+// #define ERR_ALREADYREGISTERED "462\r\n"
+// #define ERR_PASSWDMISMATCH "464\r\n"
+// #define ERR_NONICKNAMEGIVEN "431\r\n"
+// #define ERR_ERRONEOUSNICKNAME "432\r\n"
+// #define ERR_NICKNAMEINUSE "433\r\n"
 
 #include "Client.hpp"
 #include "Utils.hpp"
+#include "Message.hpp"
 #include <fcntl.h>
 #include <unistd.h>
-#include <netinet/in.h>		// helds the struct sockaddr_in
+#include <netinet/in.h>		// holdo the struct sockaddr_in
 #include <arpa/inet.h>      // inetitoa, ntohs, ...
 #include <csignal>
 #include <sys/select.h>     // FD_ZERO, ...
@@ -63,6 +68,8 @@ class   Server {
         void        handleClientInput(Client &c);
         int         checkPsswd(std::string msg);
         void        handlePassCommand(int num, Client &c);
+        int         checkNickname(std::string msg);
+        void        handleNickCommand(int num, Client &c, std::string msg);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);

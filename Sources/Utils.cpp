@@ -12,15 +12,17 @@ int  parseInt(std::string str) {
 	return (ret);
 }
 
-int	stringCompare(std::string first, std::string second) {
-	int	i = 0;
-	if (!first[0] || !second[0]) return (1);
-	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
-	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
-	return (1);
-}
+// int	stringCompare(std::string first, std::string second) {
+// 	int	i = 0;
+// 	if (!first[0] || !second[0]) return (1);
+// 	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
+// 	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
+// 	return (1);
+// }
 
-int checkCommandOrPrefix(std::string msg) {
-    if (!stringCompare(msg.substr(0, msg.find(' ')), "pass")) return (1);	// pass command
-    return (0);																// command not found
-}
+// int checkCommandAndPrefix(std::string msg, std::string nname) {
+// 	std::cout<<msg.substr(i, msg.find(' '));
+// 	if (!stringCompare(msg.substr(i, msg.find(' ')), "pass")) return (1);			// pass command
+//     else if (!stringCompare(msg.substr(i, msg.find(' ')), "nick")) return (2);		// nick command
+// 	return (0);																		// command not found
+// }

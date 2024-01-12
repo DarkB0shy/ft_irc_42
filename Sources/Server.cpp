@@ -52,50 +52,12 @@ void    Server::handleNewConnection(void) {
 			_clients[i].setSocketFd(tempSocket.socket);
 			_clients[i].setIpAddress(inet_ntoa(tempSocket.address.sin_addr));
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
+            _clients[i].setIsReg(0);
+            _clients[i].setIsChanOp(0);
             std::cout<<CONNHANDLED<<_clients[i].getIpAddress()<<", "<<_clients[i].getPort()<<std::endl;
             break;
 		}
 	}
-}
-
-int Server::checkPsswd(std::string msg) {
-    int i = 0;
-    while (msg[i]) if (msg[i] != ' ') i++; else break;
-    if (i == msg.size()) return (461);
-    msg = msg.substr(msg.find(' '), msg.size()).erase(0, 1);
-    if (!stringCompare(msg, _pass)) return (0); else return (464);
-}
-
-void    Server::handlePassCommand(int num, Client &c) {
-    if (num == 0) sendMessage(c.getSocketFd(), "Yay!\r\n");
-    else if (num == 461) sendMessage(c.getSocketFd(), ERR_NEEDMOREPARAMS);
-    else if (num == 464) sendMessage(c.getSocketFd(), ERR_PASSWDMISMATCH);
-}
-
-void    Server::handleClientInput(Client &c) {
-    char    buffa[BUFFASIZE];
-    int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
-    if (valread == -1) std_errore(READERR);
-    else if (valread == 0) {
-        std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
-        c.setSocketFd(0);
-        return ;
-    }
-    else {
-        buffa[valread] = '\0';
-        int parseRes = checkCommandOrPrefix(buffa);
-        if (!parseRes) ;
-        else if (parseRes == 1) handlePassCommand(checkPsswd(buffa), c);
-    }
-}
-
-void	Server::sendMessage(const int socket, const std::string &message) {
-    int send_res = send(socket, message.c_str(), message.size(), MSG_NOSIGNAL);
-    if (send_res == -1) {switch (errno) {
-            case EPIPE: return ;
-            default: std_errore(OUTERR);
-        }
-    }
 }
 
 void    Server::runServer(void) {
@@ -109,5 +71,73 @@ void    Server::clearSocketsSet (void) {
 	for (int fd = 0; fd <= _maxFd; fd++) if (FD_ISSET(fd, &_readFds)) close(fd);
 	close(this->getSocket());
 }
+
+void	Server::sendMessage(const int socket, const std::string &message) {
+    int send_res = send(socket, message.c_str(), message.size(), MSG_NOSIGNAL);
+    if (send_res == -1) {switch (errno) {
+            case EPIPE: return ;
+            default: std_errore(OUTERR);
+        }
+    }
+}
+
+void    Server::handleClientInput(Client &c) {
+    char    buffa[BUFFASIZE];
+    int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
+    if (valread == -1) std_errore(READERR);
+    else if (valread == 0) {
+        std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
+        c.setSocketFd(0);
+        return ;
+    }
+    else {
+        buffa[valread] = '\0';
+        // parsing ...
+        int i = 0; while (buffa[i]) i++; if (i == 1 || i == 2) return ;                                       // empty line check or 1 character line check
+        Message *newMssg;
+        newMssg = newMssg->splittedMssg(buffa);
+        if (!newMssg) return ;
+        delete newMssg;
+        //
+        // int i = 0;
+        // while (buffa[i]) i++;
+        // if (i > 512) return ;
+        // int parseRes = checkCommandAndPrefix(buffa, c.getNickName());
+        // if (!parseRes) ;
+        // else if (parseRes == 1) if (c.getIsReg()) sendMessage(c.getSocketFd(), ERR_ALREADYREGISTERED); else handlePassCommand(checkPsswd(buffa), c);
+        // else if (parseRes == 2) handleNickCommand(checkNickname(buffa), c, buffa);
+    }
+}
+                                    // pass
+// int Server::checkPsswd(std::string msg) {
+//     int i = 0;
+//     while (msg[i]) if (msg[i] != ' ') i++; else break;
+//     if (i == msg.size()) return (461);
+//     msg = msg.substr(msg.find(' '), msg.size()).erase(0, 1);
+//     if (!stringCompare(msg, _pass)) return (0); else return (464);
+// }
+
+// void    Server::handlePassCommand(int num, Client &c) {
+//     if (num == 0) sendMessage(c.getSocketFd(), "Yay!\r\n");
+//     else if (num == 461) sendMessage(c.getSocketFd(), ERR_NEEDMOREPARAMS);
+//     else if (num == 464) sendMessage(c.getSocketFd(), ERR_PASSWDMISMATCH);
+// }
+//                                 // nick
+// int    Server::checkNickname(std::string msg) {
+//     int i = 0;
+//     while (msg[i]) if (msg[i] != ' ') i++; else break;
+//     if (i == msg.size()) return (431);
+//     msg = msg.substr(msg.find(' '), msg.size()).erase(0, 1);
+//     if (msg.size() > 9) return (432);
+//     for (int i = 0; i < MAXCLIENTS; i++) if (!stringCompare(_clients[i].getNickName(), msg)) return (433);
+//     return (0);
+// }
+
+// void    Server::handleNickCommand(int num, Client &c, std::string msg) {
+//     if (num == 0) c.setNickName(msg.substr(msg.find(' '), msg.size()).erase(0, 1));
+//     else if (num == 431) sendMessage(c.getSocketFd(), ERR_NONICKNAMEGIVEN);
+//     else if (num == 432) sendMessage(c.getSocketFd(), ERR_ERRONEOUSNICKNAME);
+//     else if (num == 433) sendMessage(c.getSocketFd(), ERR_NICKNAMEINUSE);
+// }
 
 Server::~Server (void) {}
