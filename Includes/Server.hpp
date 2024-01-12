@@ -57,7 +57,7 @@ class   Server {
         std::string                     _pass;
         Client                          _clients[MAXCLIENTS];
     public:
-        void        sendMessage(const int socket, const std::string &message);
+        void        sendMessage(const std::string &message, Client &c);
         void        startServer(void);
         void        clearSocketsSet(void);
         void        resetSocketSet(void);

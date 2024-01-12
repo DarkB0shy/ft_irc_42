@@ -54,6 +54,7 @@ void    Server::handleNewConnection(void) {
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
             _clients[i].setIsReg(0);
             _clients[i].setIsChanOp(0);
+            // _clients[i].setNickName("gio");
             std::cout<<CONNHANDLED<<_clients[i].getIpAddress()<<", "<<_clients[i].getPort()<<std::endl;
             break;
 		}
@@ -72,8 +73,8 @@ void    Server::clearSocketsSet (void) {
 	close(this->getSocket());
 }
 
-void	Server::sendMessage(const int socket, const std::string &message) {
-    int send_res = send(socket, message.c_str(), message.size(), MSG_NOSIGNAL);
+void	Server::sendMessage(const std::string &message, Client &c) {
+    int send_res = send(c.getSocketFd(), message.c_str(), message.size(), MSG_NOSIGNAL);
     if (send_res == -1) {switch (errno) {
             case EPIPE: return ;
             default: std_errore(OUTERR);
@@ -97,7 +98,12 @@ void    Server::handleClientInput(Client &c) {
         Message *newMssg;
         newMssg = newMssg->splittedMssg(buffa);
         if (!newMssg) return ;
+        if (newMssg->getPrefix()[0]) if (stringCompare(newMssg->getPrefix(), c.getNickName())) return ;         // checks if the prefix is the nickname of the client
         delete newMssg;
+        std::string r = "ircserv";
+        if (!c.getNickName()[0]) r = r + " " + "message" + "\r\n";
+        else r = r + " " + "message" + " " + c.getNickName() + "\r\n";
+        sendMessage(r, c);
         //
         // int i = 0;
         // while (buffa[i]) i++;

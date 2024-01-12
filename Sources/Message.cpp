@@ -46,7 +46,7 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
         tempCommand[j] = '\0';
         strcpy(tmpmssg->getCommand(), tempCommand);
         j = 0;
-    } else return (NULL);
+    }
     if (mssg[i] || mssg[i] == ' ') {
         if (mssg[i] == ' ') i++;
         while (mssg[i]) {
@@ -57,7 +57,7 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
         }
         tempParameters[j] = '\0';
         strcpy(tmpmssg->getParameters(), tempParameters);
-    } else return (NULL);
+    }
     return (tmpmssg);
 }
 
@@ -70,11 +70,11 @@ int	checkMssgSyntax(std::string msg) {					// only checks for empty spaces betwe
 		i++;
 		while (msg[i] && msg[i] != ' ') i++;
 	}
-	if (!msg[i] || (msg[i] == ' ' && msg[i + 1] && msg[i + 1] == ' ')) return (1);           // checks if the mssg is made up of one word
-    while (msg[i] && msg[i] != ' ') {
-        if (msg[i] == '\r' || msg[i] == '\n') return (1);                                    // checks for single words messages
-        i++;
-    }
+	// if (!msg[i] || (msg[i] == ' ' && msg[i + 1] && msg[i + 1] == ' ')) return (1);           // checks if the mssg is made up of one word
+    // while (msg[i] && msg[i] != ' ') {
+    //     if (msg[i] == '\r' || msg[i] == '\n') return (1);                                    // checks for single words messages
+    //     i++;
+    // }
     if (msg[i] == ' ' && (msg[i + 1] && (msg[i + 1] == '\r' || msg[i + 1] == '\n'))) return (1);                    // checks for single words with a space messages
     if (msg[i + 1] && msg[i + 1] == ' ') return (1);                                                                // checks if there are two consecutive spaces
     return (0);
