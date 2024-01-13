@@ -9,12 +9,5 @@ int main (int argc, char **argv) {
     newServer.startServer();
     while (1) newServer.runServer();
     newServer.clearSocketsSet();
-
-    // char buffa[1025] = "nick vani\r\n";
-    // std::string n = "gio";
-    // Message *newMssg;
-    // newMssg = newMssg->splittedMssg(buffa);
-    // std::cout<<newMssg->getParameters();
-
     return(0);
 }

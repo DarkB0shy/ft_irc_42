@@ -50,7 +50,7 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
     }
     if (mssg[i] || mssg[i] == ' ') {
         if (mssg[i] == ' ') i++;
-        while (mssg[i]) {
+        while (mssg[i]/* && mssg[i] != ' '*/) {
             if (mssg[i] == '\0' || mssg[i] == '\r' || mssg[i] == '\n') break;
             tempParameters[j] = mssg[i];
             i++;
@@ -96,3 +96,13 @@ int	stringCompare(char * first, std::string second) {
 }
 
 Message::~Message(void) {}
+
+// int main (int argc, char **argv) {
+//     char buffa[1025] = "user fred";
+//     std::string n = "gio";
+//     Message *newMssg;
+//     newMssg = newMssg->splittedMssg(buffa);
+//     std::cout<<newMssg->getParameters();
+//     std::cout<<"del";
+//     return(0);
+// }

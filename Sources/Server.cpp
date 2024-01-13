@@ -52,6 +52,7 @@ void    Server::handleNewConnection(void) {
 			_clients[i].setSocketFd(tempSocket.socket);
 			_clients[i].setIpAddress(inet_ntoa(tempSocket.address.sin_addr));
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
+            _clients[i].setHasBeenWelcomed(1);
             std::cout<<CONNHANDLED<<_clients[i].getIpAddress()<<", "<<_clients[i].getPort()<<std::endl;
             break;
 		}
@@ -66,19 +67,18 @@ void    Server::runServer(void) {
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!_clients[i].getHasBeenWelcomed() && _clients[i].getPsswdGuessed() && _clients[i].getNnameSet() && _clients[i].getUserSet()) {
             _clients[i].setHasBeenWelcomed(1);
-            _clients[i].setHasBeenWelcomed(1);
-            sendGoodMessage(_clients[i], RPL_WELCOME);
-            sendGoodMessage(_clients[i], RPL_YOURHOST);
-            sendGoodMessage(_clients[i], RPL_CREATED);
+            sendGoodMessage(_clients[i].getSocketFd(), RPL_WELCOME, _clients[i].getNickName());
+            sendGoodMessage(_clients[i].getSocketFd(), RPL_YOURHOST, _clients[i].getNickName());
+            sendGoodMessage(_clients[i].getSocketFd(), RPL_CREATED, _clients[i].getNickName());
             std::string channelModes;
             if (!_clients[i].getIsChanOp()) {
                 channelModes = "topic (if permitted by chanOp)>";
                 std::string noOpReply = RPL_MYINFO + channelModes;
-                sendGoodMessage(_clients[i], noOpReply);
+                sendGoodMessage(_clients[i].getSocketFd(), noOpReply, _clients[i].getNickName());
             } else {
                 channelModes = "invite, kick, mode (i, t, k, o, l), topic>";
                 std::string opReply = RPL_MYINFO + channelModes;
-                sendGoodMessage(_clients[i], opReply);
+                sendGoodMessage(_clients[i].getSocketFd(), opReply, _clients[i].getNickName());
             }
             break ;
         }
@@ -90,8 +90,8 @@ void    Server::clearSocketsSet (void) {
 	close(this->getSocket());
 }
 
-void	Server::sendMessage(const std::string &message, Client &c) {
-    int send_res = send(c.getSocketFd(), message.c_str(), message.size(), MSG_NOSIGNAL);
+void	Server::sendMessage(int sfd, const std::string &message) {
+    int send_res = send(sfd, message.c_str(), message.size(), MSG_NOSIGNAL);
     if (send_res == -1) {switch (errno) {
             case EPIPE: return ;
             default: std_errore(OUTERR);
@@ -99,11 +99,11 @@ void	Server::sendMessage(const std::string &message, Client &c) {
     }
 }
 
-void    Server::sendGoodMessage(Client &c, std::string sReply) {                                // creates the server reply
+void    Server::sendGoodMessage(int sfd, std::string sReply, std::string nname) {                                // creates the server reply
     std::string r = "ircserv";
-    if (!c.getNickName()[0]) r = r + " " + sReply + "\r\n";
-    else r = r + " " + sReply + " " + c.getNickName() + "\r\n";
-    sendMessage(r, c);
+    if (!nname[0]) r = r + " " + sReply + "\r\n";
+    else r = r + " " + sReply + " " + nname + "\r\n";
+    sendMessage(sfd, r);
 }
 
 void    Server::handleClientInput(Client &c) {
@@ -138,15 +138,19 @@ void    Server::handleClientInput(Client &c) {
                 else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command, 'o' is the only parametrs accepted and it will set the user to chanOp
                     serverReply = handleUserCommand(c, newMssg->getParameters());
                 }
+                else if (!stringCompare(newMssg->getCommand(), "privmsg")) {
+                    serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
+                }
+                else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
                 else ;
             } else ;
-            if (serverReply[0]) sendGoodMessage(c, serverReply);
+            if (serverReply[0]) sendGoodMessage(c.getSocketFd(), serverReply, c.getNickName());
         } else ;
     }
 }
 
 std::string Server::handlePassCommand(Client &c, char * psswd) {
-    if (c.getPsswdGuessed()) return (ERR_ALREADYREGISTERED);
+    if (c.getPsswdGuessed() || c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);
     if (!stringCompare(psswd, _pass)) {
         c.setPsswdGuessed(1) ;
         return (PSSWD_OK);
@@ -164,7 +168,7 @@ std::string Server::handleNickCommand(Client &c, char * nname) {
 }
 
 std::string Server::handleUserCommand(Client &c, char * user) {
-    if (c.getUserSet()) return (ERR_ALREADYREGISTERED);
+    if (c.getUserSet() || c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);
     if (!user[0]) return (ERR_NEEDMOREPARAMS);                    
     int j = 0;
     while (user[j] && user[j] == ' ') j++;
@@ -179,6 +183,37 @@ std::string Server::handleUserCommand(Client &c, char * user) {
         i++;
     }
     c.setUserName(user); c.setIsChanOp(flagOp); c.setUserSet(1); return (UNAME_OK);
+}
+
+int	stringCompareTheReturn(std::string first, std::string second) {
+	int	i = 0;
+	if (!first[0] || !second[0]) return (1);
+	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
+	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
+	return (1);
+}
+
+std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
+    if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
+    if (!privMsg[0]) return (ERR_NORECIPIENT);
+    int i = 0;
+    while (privMsg[i] && privMsg[i] != ' ') i++;                                    // check sintassi privmsg
+    if (privMsg[i] && privMsg[i] == ' ') i++;
+    if (!privMsg[i] || privMsg[i] == ' ') return (ERR_NOTEXTTOSEND);
+    std::string tempPrivMsg(privMsg);
+    std::string msgDest;
+    int         destSocket;
+    for (int i = 0; i < MAXCLIENTS; i++) {
+        if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {
+            msgDest = _clients[i].getNickName();
+            destSocket = _clients[i].getSocketFd();
+            break;
+        }
+        if (i == MAXCLIENTS - 1) return (ERR_NOSUCHNICK);
+    }
+    std::string toSend = "message from " + c.getNickName() + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
+    sendMessage(destSocket, toSend);
+    return (MSG_OK);
 }
 
 Server::~Server (void) {}
