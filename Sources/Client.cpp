@@ -1,6 +1,6 @@
 #include "../Includes/Client.hpp"
 
-Client::Client (void) {_isReg = 0; _isChanOp = 0; _psswdGuessed = 0; _nnameSet = 0; _userSet = 0;}
+Client::Client (void) {/*_isReg = 0;*/ _isChanOp = 0; _psswdGuessed = 0; _nnameSet = 0; _userSet = 0; _hasBeenWelcomed = 0;}
 
 Client::Client (const Client &c) {*this = c;}
 
@@ -16,7 +16,7 @@ std::string  Client::getIpAddress(void) const {return (_ipAddress);}
 
 u_int16_t   Client::getPort(void) const {return (_port);}
 
-int Client::getIsReg(void) const {return (_isReg);}
+// int Client::getIsReg(void) const {return (_isReg);}
 
 int Client::getIsChanOp(void) const {return (_isChanOp);}
 
@@ -30,13 +30,15 @@ int Client::getNnameSet(void) const {return (_nnameSet);}
 
 int Client::getUserSet(void) const {return (_userSet);}
 
+int Client::getHasBeenWelcomed(void) const {return _hasBeenWelcomed;}
+
 void    Client::setSocketFd(int socketFd) {_socketFd = socketFd;}
 
 void    Client::setIpAddress(std::string ipAddress) {_ipAddress = ipAddress;}
 
 void    Client::setPort(u_int16_t port) {_port = port;}
 
-void    Client::setIsReg(int reg) {_isReg = reg;}
+// void    Client::setIsReg(int reg) {_isReg = reg;}
 
 void    Client::setIsChanOp(int chanOp) {_isChanOp = chanOp;}
 
@@ -49,5 +51,7 @@ void    Client::setPsswdGuessed(int pGuessed) {_psswdGuessed = pGuessed;}
 void    Client::setNnameSet(int nnSet) {_nnameSet = nnSet;}
 
 void    Client::setUserSet(int uSet) {_userSet = uSet;}
+
+void    Client::setHasBeenWelcomed(int hbw) {_hasBeenWelcomed = hbw;}
 
 Client::~Client(void) {}

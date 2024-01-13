@@ -48,12 +48,10 @@ void    Server::handleNewConnection(void) {
     t_socket    tempSocket;
 	tempSocket.addrlen = sizeof(tempSocket.address);
 	if ((tempSocket.socket = accept(this->getSocket(), (struct sockaddr *)&tempSocket.address, (socklen_t*)&tempSocket.addrlen)) < 0) {std_errore(NEWCONNERR);}
-	for (int i = 0; i < MAXCLIENTS; i++) { if(_clients[i].getSocketFd() == 0) {                                                                                     // Adds the temp socket to this->_clients
+	for (int i = 0; i < MAXCLIENTS; i++) { if (_clients[i].getSocketFd() == 0) {                                                                                     // Adds the temp socket to this->_clients
 			_clients[i].setSocketFd(tempSocket.socket);
 			_clients[i].setIpAddress(inet_ntoa(tempSocket.address.sin_addr));
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
-            _clients[i].setIsReg(0);
-            _clients[i].setIsChanOp(0);
             std::cout<<CONNHANDLED<<_clients[i].getIpAddress()<<", "<<_clients[i].getPort()<<std::endl;
             break;
 		}
@@ -66,8 +64,9 @@ void    Server::runServer(void) {
     if (FD_ISSET(this->getSocket(), &_readFds)) handleNewConnection();                                                          // Checks if the main socket is inside the set, if it is it means there is a new connection
     for (int i = 0; i < MAXCLIENTS; i++) if (FD_ISSET(_clients[i].getSocketFd(), &_readFds)) handleClientInput(_clients[i]);    // If one of the client fds is inside the set it means there is some I/O operation coming through
     for (int i = 0; i < MAXCLIENTS; i++) {
-        if (_clients[i].getPsswdGuessed() && _clients[i].getNnameSet() && _clients[i].getUserSet()) {                           // RPL WELCOME !
-            _clients[i].setIsReg(1);
+        if (!_clients[i].getHasBeenWelcomed() && _clients[i].getPsswdGuessed() && _clients[i].getNnameSet() && _clients[i].getUserSet()) {
+            _clients[i].setHasBeenWelcomed(1);
+            _clients[i].setHasBeenWelcomed(1);
             sendGoodMessage(_clients[i], RPL_WELCOME);
             sendGoodMessage(_clients[i], RPL_YOURHOST);
             sendGoodMessage(_clients[i], RPL_CREATED);
@@ -81,6 +80,7 @@ void    Server::runServer(void) {
                 std::string opReply = RPL_MYINFO + channelModes;
                 sendGoodMessage(_clients[i], opReply);
             }
+            break ;
         }
     }
 }
@@ -126,28 +126,27 @@ void    Server::handleClientInput(Client &c) {
         if (newMssg->getPrefix()[0]) {
             if (!c.getNickName()[0]) flag = 1;
             if (stringCompare(newMssg->getPrefix(), c.getNickName())) flag = 1;
-        }
+        }    
         if (!newMssg->getPrefix()[0] || !flag) {
             if (newMssg->getCommand()[0]) {
-                if (!stringCompare(newMssg->getCommand(), "pass")) {                                                // password command
-                    if (c.getIsReg()) serverReply = ERR_ALREADYREGISTERED;
-                    else serverReply = handlePassCommand(c, newMssg->getParameters());
+                if (!stringCompare(newMssg->getCommand(), "pass")) { 
+                    serverReply = handlePassCommand(c, newMssg->getParameters());                                   // pass command
                 }
                 else if (!stringCompare(newMssg->getCommand(), "nick")) {
                     serverReply = handleNickCommand(c, newMssg->getParameters());                                   // nick command
                 }
-                else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command
-                    if (c.getUserSet()) serverReply = ERR_ALREADYREGISTERED;
-                    else serverReply = handleUserCommand(c, newMssg->getParameters());
+                else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command, 'o' is the only parametrs accepted and it will set the user to chanOp
+                    serverReply = handleUserCommand(c, newMssg->getParameters());
                 }
                 else ;
-            } else return ;
+            } else ;
             if (serverReply[0]) sendGoodMessage(c, serverReply);
-        } else return ;
+        } else ;
     }
 }
 
 std::string Server::handlePassCommand(Client &c, char * psswd) {
+    if (c.getPsswdGuessed()) return (ERR_ALREADYREGISTERED);
     if (!stringCompare(psswd, _pass)) {
         c.setPsswdGuessed(1) ;
         return (PSSWD_OK);
@@ -165,15 +164,20 @@ std::string Server::handleNickCommand(Client &c, char * nname) {
 }
 
 std::string Server::handleUserCommand(Client &c, char * user) {
-    if (!user[0]) return (ERR_NEEDMOREPARAMS);
-    int flagOp = 0;
+    if (c.getUserSet()) return (ERR_ALREADYREGISTERED);
+    if (!user[0]) return (ERR_NEEDMOREPARAMS);                    
+    int j = 0;
+    while (user[j] && user[j] == ' ') j++;
+    if (j >= 1 || strlen(user) > 11) return (ERR_ERRONEOUSUSER);
     int i = 0;
-    if (user[i] == 'o' && user[1] && user[1] == ' ') {i = 2; flagOp = 1;}
+    int flagOp = 0;
     while (user[i]) {
-        if (user[i] == ' ' || user[i] == '@' || user[i] == '\0' || user[i] == '\r' || user[i] == '\n') break;
+        if (user[i] == ' ') {
+            if (user[i + 1] && user[i + 1] == 'o' && !user[i + 2]) flagOp = 1; 
+            else return (ERR_ERRONEOUSUSER);
+        }
         i++;
     }
-    if (i != strlen(user) || i > 9) return (ERR_ERRONEOUSUSER);
     c.setUserName(user); c.setIsChanOp(flagOp); c.setUserSet(1); return (UNAME_OK);
 }
 
