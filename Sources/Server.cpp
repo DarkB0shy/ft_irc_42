@@ -121,7 +121,7 @@ void    Server::handleClientInput(Client &c) {
         Message *newMssg;
         newMssg = newMssg->splittedMssg(buffa);
         if (!newMssg) return ;
-        std::string serverReply = NULL;
+        std::string serverReply;
         int flag = 0;                                                                                             // prefix check
         if (newMssg->getPrefix()[0]) {
             if (!c.getNickName()[0]) flag = 1;
