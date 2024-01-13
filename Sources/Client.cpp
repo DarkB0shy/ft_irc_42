@@ -1,6 +1,6 @@
 #include "../Includes/Client.hpp"
 
-Client::Client (void) {_isReg = 0; _isChanOp = 0;}
+Client::Client (void) {_isReg = 0; _isChanOp = 0; _psswdGuessed = 0; _nnameSet = 0; _userSet = 0;}
 
 Client::Client (const Client &c) {*this = c;}
 
@@ -22,6 +22,14 @@ int Client::getIsChanOp(void) const {return (_isChanOp);}
 
 std::string Client::getNickName(void) const {return (_nickName);}
 
+std::string Client::getUserName(void) const {return (_userName);}
+
+int Client::getPsswdGuessed(void) const {return (_psswdGuessed);}
+
+int Client::getNnameSet(void) const {return (_nnameSet);}
+
+int Client::getUserSet(void) const {return (_userSet);}
+
 void    Client::setSocketFd(int socketFd) {_socketFd = socketFd;}
 
 void    Client::setIpAddress(std::string ipAddress) {_ipAddress = ipAddress;}
@@ -33,5 +41,13 @@ void    Client::setIsReg(int reg) {_isReg = reg;}
 void    Client::setIsChanOp(int chanOp) {_isChanOp = chanOp;}
 
 void    Client::setNickName(std::string nname) {_nickName = nname;}
+
+void    Client::setUserName(std::string uname) {_userName = uname;}
+
+void    Client::setPsswdGuessed(int pGuessed) {_psswdGuessed = pGuessed;}
+
+void    Client::setNnameSet(int nnSet) {_nnameSet = nnSet;}
+
+void    Client::setUserSet(int uSet) {_userSet = uSet;}
 
 Client::~Client(void) {}

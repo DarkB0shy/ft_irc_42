@@ -65,6 +65,24 @@ void    Server::runServer(void) {
 	if (select(_maxFd + 1, &_readFds, NULL, NULL, NULL) == -1) std_errore(FDSETERROR);                                          // Waits for any I/O operation from the set of fds
     if (FD_ISSET(this->getSocket(), &_readFds)) handleNewConnection();                                                          // Checks if the main socket is inside the set, if it is it means there is a new connection
     for (int i = 0; i < MAXCLIENTS; i++) if (FD_ISSET(_clients[i].getSocketFd(), &_readFds)) handleClientInput(_clients[i]);    // If one of the client fds is inside the set it means there is some I/O operation coming through
+    for (int i = 0; i < MAXCLIENTS; i++) {
+        if (_clients[i].getPsswdGuessed() && _clients[i].getNnameSet() && _clients[i].getUserSet()) {                           // RPL WELCOME !
+            _clients[i].setIsReg(1);
+            sendGoodMessage(_clients[i], RPL_WELCOME);
+            sendGoodMessage(_clients[i], RPL_YOURHOST);
+            sendGoodMessage(_clients[i], RPL_CREATED);
+            std::string channelModes;
+            if (!_clients[i].getIsChanOp()) {
+                channelModes = "topic (if permitted by chanOp)>";
+                std::string noOpReply = RPL_MYINFO + channelModes;
+                sendGoodMessage(_clients[i], noOpReply);
+            } else {
+                channelModes = "invite, kick, mode (i, t, k, o, l), topic>";
+                std::string opReply = RPL_MYINFO + channelModes;
+                sendGoodMessage(_clients[i], opReply);
+            }
+        }
+    }
 }
 
 void    Server::clearSocketsSet (void) {
@@ -79,6 +97,13 @@ void	Server::sendMessage(const std::string &message, Client &c) {
             default: std_errore(OUTERR);
         }
     }
+}
+
+void    Server::sendGoodMessage(Client &c, std::string sReply) {                                // creates the server reply
+    std::string r = "ircserv";
+    if (!c.getNickName()[0]) r = r + " " + sReply + "\r\n";
+    else r = r + " " + sReply + " " + c.getNickName() + "\r\n";
+    sendMessage(r, c);
 }
 
 void    Server::handleClientInput(Client &c) {
@@ -96,8 +121,8 @@ void    Server::handleClientInput(Client &c) {
         Message *newMssg;
         newMssg = newMssg->splittedMssg(buffa);
         if (!newMssg) return ;
-        std::string serverReply;
-        int flag = 0;
+        std::string serverReply = NULL;
+        int flag = 0;                                                                                             // prefix check
         if (newMssg->getPrefix()[0]) {
             if (!c.getNickName()[0]) flag = 1;
             if (stringCompare(newMssg->getPrefix(), c.getNickName())) flag = 1;
@@ -111,31 +136,45 @@ void    Server::handleClientInput(Client &c) {
                 else if (!stringCompare(newMssg->getCommand(), "nick")) {
                     serverReply = handleNickCommand(c, newMssg->getParameters());                                   // nick command
                 }
+                else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command
+                    if (c.getUserSet()) serverReply = ERR_ALREADYREGISTERED;
+                    else serverReply = handleUserCommand(c, newMssg->getParameters());
+                }
                 else ;
             } else return ;
-            if (serverReply[0]) {                                                                                   // server reply
-                std::string r = "ircserv";
-                if (!c.getNickName()[0]) r = r + " " + serverReply + "\r\n";
-                else r = r + " " + serverReply + " " + c.getNickName() + "\r\n";
-                sendMessage(r, c);
-            }
+            if (serverReply[0]) sendGoodMessage(c, serverReply);
         } else return ;
     }
 }
 
-std::string Server::handlePassCommand(Client &c, char * psswd) {            // pass command
-    if (!stringCompare(psswd, _pass)) return (PSSWD_OK);
-    else return (ERR_PASSWDMISMATCH);
+std::string Server::handlePassCommand(Client &c, char * psswd) {
+    if (!stringCompare(psswd, _pass)) {
+        c.setPsswdGuessed(1) ;
+        return (PSSWD_OK);
+    } else return (ERR_PASSWDMISMATCH);
 }
 
-std::string Server::handleNickCommand(Client &c, char * nname) {            // nick command
+std::string Server::handleNickCommand(Client &c, char * nname) {
     if (!nname[0]) return (ERR_NONICKNAMEGIVEN);
     int i = 0;
     while (nname[i]) i++;
     if (i > 9) return (ERR_ERRONEOUSNICKNAME);
     std::string tempStr(nname);
     for (int j = 0; j < MAXCLIENTS; j++) if (!stringCompare(nname, _clients[j].getNickName())) return (ERR_NICKNAMEINUSE);
-    c.setNickName(tempStr); return (NNAME_OK);
+    c.setNickName(tempStr); c.setNnameSet(1); return (NNAME_OK);
+}
+
+std::string Server::handleUserCommand(Client &c, char * user) {
+    if (!user[0]) return (ERR_NEEDMOREPARAMS);
+    int flagOp = 0;
+    int i = 0;
+    if (user[i] == 'o' && user[1] && user[1] == ' ') {i = 2; flagOp = 1;}
+    while (user[i]) {
+        if (user[i] == ' ' || user[i] == '@' || user[i] == '\0' || user[i] == '\r' || user[i] == '\n') break;
+        i++;
+    }
+    if (i != strlen(user) || i > 9) return (ERR_ERRONEOUSUSER);
+    c.setUserName(user); c.setIsChanOp(flagOp); c.setUserSet(1); return (UNAME_OK);
 }
 
 Server::~Server (void) {}

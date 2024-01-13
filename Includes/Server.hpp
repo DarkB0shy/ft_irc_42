@@ -8,8 +8,13 @@
 #define BUFFASIZE 1025
 #define PSSWD_OK "password correct"
 #define NNAME_OK "nickname set"
+#define UNAME_OK "username set"
+#define RPL_WELCOME "welcome to the Internet Relay Network"
+#define RPL_YOURHOST "your host is ircserv"
+#define RPL_CREATED "this server was created on new year's eve"
+#define RPL_MYINFO "<ircserv> <version 0> <available user modes: nick, join, privmsg> <available channel modes: "
 
-#define WRONGARGS "usage: ./ircserv #port connection_pssw"
+#define WRONGARGS "usage: ./ircserv #port connection_psswd"
 #define WRONGPORT "the #port is invalid"
 #define WRONGPASS "invalid password"
 #define NOSOCKET "socket could not be created"
@@ -21,19 +26,20 @@
 #define OUTERR "could not send message"
 #define READERR "could not read message"
 
-// #define ERR_NEEDMOREPARAMS "461\r\n"            // Only for registered users
+#define ERR_NEEDMOREPARAMS "461"
 #define ERR_ALREADYREGISTERED "462"
 #define ERR_PASSWDMISMATCH "464"
 #define ERR_NONICKNAMEGIVEN "431"
 #define ERR_ERRONEOUSNICKNAME "432"
 #define ERR_NICKNAMEINUSE "433"
+#define ERR_ERRONEOUSUSER "usernames can have up to 9 characters, and cannot have ' ' or '@'"
 
 #include "Client.hpp"
 #include "Utils.hpp"
 #include "Message.hpp"
 #include <fcntl.h>
 #include <unistd.h>
-#include <netinet/in.h>		// holdo the struct sockaddr_in
+#include <netinet/in.h>		// holds the struct sockaddr_in
 #include <arpa/inet.h>      // inetitoa, ntohs, ...
 #include <csignal>
 #include <sys/select.h>     // FD_ZERO, ...
@@ -59,6 +65,7 @@ class   Server {
         Client                          _clients[MAXCLIENTS];
     public:
         void        sendMessage(const std::string &message, Client &c);
+        void        sendGoodMessage(Client &c, std::string sReply);
         void        startServer(void);
         void        clearSocketsSet(void);
         void        resetSocketSet(void);
@@ -69,6 +76,7 @@ class   Server {
         void        handleClientInput(Client &c);
         std::string handlePassCommand(Client &c, char * psswd);
         std::string handleNickCommand(Client &c, char * nname);
+        std::string handleUserCommand(Client &c, char * user);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);
