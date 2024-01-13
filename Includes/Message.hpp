@@ -20,6 +20,4 @@ class Message {
         ~Message();
 };
 
-int     checkMssgSyntax(std::string msg);
-
 #endif

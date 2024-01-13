@@ -27,7 +27,7 @@
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
 #define RPL_CREATED "this server was created on new year's eve"
-#define RPL_MYINFO "<ircserv> <version 0> <available user modes: nick, join, privmsg> <available channel modes: "
+#define RPL_MYINFO "<ircserv> <version 0> <available user modes: join, nick, privmsg, topic (is allowed by the channel)> <available channel modes (only for chanOps): invite, kick, mode (i, t, k, o, l), topic>"
 #define ERR_NOSUCHNICK "401"
 #define ERR_NORECIPIENT "411"
 #define ERR_NOTEXTTOSEND "412"

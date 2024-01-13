@@ -12,17 +12,38 @@ int  parseInt(std::string str) {
 	return (ret);
 }
 
-// int	stringCompare(char * first, std::string second) {
-// 	int	i = 0;
-// 	if (!first[0] || !second[0]) return (1);
-// 	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
-// 	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
-// 	return (1);
-// }
+int isAlpha(char c) {
+    if (c >= 'a' && c <= 'z') return (0);
+    else return (1);
+}
 
-// int checkCommandAndPrefix(std::string msg, std::string nname) {
-// 	std::cout<<msg.substr(i, msg.find(' '));
-// 	if (!stringCompare(msg.substr(i, msg.find(' ')), "pass")) return (1);			// pass command
-//     else if (!stringCompare(msg.substr(i, msg.find(' ')), "nick")) return (2);		// nick command
-// 	return (0);																		// command not found
-// }
+int	checkMssgSyntax(std::string msg) {					// only checks for empty spaces between each word
+	if (!msg[0]) return (1);                            // checks if the string exists
+	if (isAlpha(msg[0]) && msg[0] != ':') return (1);
+    if (msg.length() > 513) return (1);                 // maximum size is 512 + '\0'
+    int i = 0;
+	if (msg[i] == ' ') return (1);
+    if (msg[i] == ':') {
+		i++;
+		while (msg[i] && msg[i] != ' ') i++;
+	}
+    if (msg[i] == ' ' && (msg[i + 1] && (msg[i + 1] == '\r' || msg[i + 1] == '\n'))) return (1);                    // checks for single words with a space messages
+    if (msg[i + 1] && msg[i + 1] == ' ') return (1);                                                                // checks if there are two consecutive spaces
+    return (0);
+}
+
+int	stringCompare(char * first, std::string second) {
+	int	i = 0;
+	if (!first[0] || !second[0]) return (1);
+	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
+	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
+	return (1);
+}
+
+int	stringCompareTheReturn(std::string first, std::string second) {
+	int	i = 0;
+	if (!first[0] || !second[0]) return (1);
+	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
+	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
+	return (1);
+}

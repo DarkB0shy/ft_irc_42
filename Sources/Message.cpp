@@ -62,39 +62,6 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
     return (tmpmssg);
 }
 
-int isAlpha(char c) {
-    if (c >= 'a' && c <= 'z') return (0);
-    else return (1);
-}
-
-int	checkMssgSyntax(std::string msg) {					// only checks for empty spaces between each word
-	if (!msg[0]) return (1);                            // checks if the string exists
-	if (isAlpha(msg[0]) && msg[0] != ':') return (1);
-    if (msg.length() > 513) return (1);                 // maximum size is 512 + '\0'
-    int i = 0;
-	if (msg[i] == ' ') return (1);
-    if (msg[i] == ':') {
-		i++;
-		while (msg[i] && msg[i] != ' ') i++;
-	}
-	// if (!msg[i] || (msg[i] == ' ' && msg[i + 1] && msg[i + 1] == ' ')) return (1);           // checks if the mssg is made up of one word
-    // while (msg[i] && msg[i] != ' ') {
-    //     if (msg[i] == '\r' || msg[i] == '\n') return (1);                                    // checks for single words messages
-    //     i++;
-    // }
-    if (msg[i] == ' ' && (msg[i + 1] && (msg[i + 1] == '\r' || msg[i + 1] == '\n'))) return (1);                    // checks for single words with a space messages
-    if (msg[i + 1] && msg[i + 1] == ' ') return (1);                                                                // checks if there are two consecutive spaces
-    return (0);
-}
-
-int	stringCompare(char * first, std::string second) {
-	int	i = 0;
-	if (!first[0] || !second[0]) return (1);
-	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
-	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
-	return (1);
-}
-
 Message::~Message(void) {}
 
 // int main (int argc, char **argv) {

@@ -52,7 +52,7 @@ void    Server::handleNewConnection(void) {
 			_clients[i].setSocketFd(tempSocket.socket);
 			_clients[i].setIpAddress(inet_ntoa(tempSocket.address.sin_addr));
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
-            _clients[i].setHasBeenWelcomed(1);
+            // _clients[i].setHasBeenWelcomed(1);
             std::cout<<CONNHANDLED<<_clients[i].getIpAddress()<<", "<<_clients[i].getPort()<<std::endl;
             break;
 		}
@@ -64,24 +64,15 @@ void    Server::runServer(void) {
 	if (select(_maxFd + 1, &_readFds, NULL, NULL, NULL) == -1) std_errore(FDSETERROR);                                          // Waits for any I/O operation from the set of fds
     if (FD_ISSET(this->getSocket(), &_readFds)) handleNewConnection();                                                          // Checks if the main socket is inside the set, if it is it means there is a new connection
     for (int i = 0; i < MAXCLIENTS; i++) if (FD_ISSET(_clients[i].getSocketFd(), &_readFds)) handleClientInput(_clients[i]);    // If one of the client fds is inside the set it means there is some I/O operation coming through
-    for (int i = 0; i < MAXCLIENTS; i++) {
+    for (int i = 0; i < MAXCLIENTS; i++) {                                                                                      // RPL_WELCOME
         if (!_clients[i].getHasBeenWelcomed() && _clients[i].getPsswdGuessed() && _clients[i].getNnameSet() && _clients[i].getUserSet()) {
             _clients[i].setHasBeenWelcomed(1);
             sendGoodMessage(_clients[i].getSocketFd(), RPL_WELCOME, _clients[i].getNickName());
             sendGoodMessage(_clients[i].getSocketFd(), RPL_YOURHOST, _clients[i].getNickName());
             sendGoodMessage(_clients[i].getSocketFd(), RPL_CREATED, _clients[i].getNickName());
-            std::string channelModes;
-            if (!_clients[i].getIsChanOp()) {
-                channelModes = "topic (if permitted by chanOp)>";
-                std::string noOpReply = RPL_MYINFO + channelModes;
-                sendGoodMessage(_clients[i].getSocketFd(), noOpReply, _clients[i].getNickName());
-            } else {
-                channelModes = "invite, kick, mode (i, t, k, o, l), topic>";
-                std::string opReply = RPL_MYINFO + channelModes;
-                sendGoodMessage(_clients[i].getSocketFd(), opReply, _clients[i].getNickName());
+            sendGoodMessage(_clients[i].getSocketFd(), RPL_MYINFO, _clients[i].getNickName());
             }
             break ;
-        }
     }
 }
 
@@ -90,7 +81,7 @@ void    Server::clearSocketsSet (void) {
 	close(this->getSocket());
 }
 
-void	Server::sendMessage(int sfd, const std::string &message) {
+void	Server::sendMessage(int sfd, const std::string &message) {                                              // sends the message. MSG_NOSIGNAL is needed otherwise one client disconnection causes the disconnection of the server as well. This is why if EPIPE error is returned the server does nothing
     int send_res = send(sfd, message.c_str(), message.size(), MSG_NOSIGNAL);
     if (send_res == -1) {switch (errno) {
             case EPIPE: return ;
@@ -110,7 +101,7 @@ void    Server::handleClientInput(Client &c) {
     char    buffa[BUFFASIZE];
     int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
     if (valread == -1) std_errore(READERR);
-    else if (valread == 0) {
+    else if (valread == 0) {                                                                                    // valread returns 0 when the connection to the socket is lost
         std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
         c.setSocketFd(0);
         return ;
@@ -119,7 +110,7 @@ void    Server::handleClientInput(Client &c) {
         buffa[valread] = '\0';                                                                                // parsing ...
         int i = 0; while (buffa[i]) i++; if (i == 1 || i == 2) return ;                                       // empty line check or 1 character line check
         Message *newMssg;
-        newMssg = newMssg->splittedMssg(buffa);
+        newMssg = newMssg->splittedMssg(buffa);                                                                   // splits the message into (prefix) command and parameters
         if (!newMssg) return ;
         std::string serverReply;
         int flag = 0;                                                                                             // prefix check
@@ -135,10 +126,10 @@ void    Server::handleClientInput(Client &c) {
                 else if (!stringCompare(newMssg->getCommand(), "nick")) {
                     serverReply = handleNickCommand(c, newMssg->getParameters());                                   // nick command
                 }
-                else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command, 'o' is the only parametrs accepted and it will set the user to chanOp
+                else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command
                     serverReply = handleUserCommand(c, newMssg->getParameters());
                 }
-                else if (!stringCompare(newMssg->getCommand(), "privmsg")) {
+                else if (!stringCompare(newMssg->getCommand(), "privmsg")) {                                        // privmsg command
                     serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
                 }
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
@@ -150,7 +141,7 @@ void    Server::handleClientInput(Client &c) {
 }
 
 std::string Server::handlePassCommand(Client &c, char * psswd) {
-    if (c.getPsswdGuessed() || c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);
+    if (c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);
     if (!stringCompare(psswd, _pass)) {
         c.setPsswdGuessed(1) ;
         return (PSSWD_OK);
@@ -161,50 +152,40 @@ std::string Server::handleNickCommand(Client &c, char * nname) {
     if (!nname[0]) return (ERR_NONICKNAMEGIVEN);
     int i = 0;
     while (nname[i]) i++;
-    if (i > 9) return (ERR_ERRONEOUSNICKNAME);
+    if (i > 9) return (ERR_ERRONEOUSNICKNAME);                      // nick names can be made up of any character but have a maximum size of 9
     std::string tempStr(nname);
-    for (int j = 0; j < MAXCLIENTS; j++) if (!stringCompare(nname, _clients[j].getNickName())) return (ERR_NICKNAMEINUSE);
+    for (int j = 0; j < MAXCLIENTS; j++) if (!stringCompare(nname, _clients[j].getNickName())) return (ERR_NICKNAMEINUSE);          // it is very common for several people to want the same nickname
     c.setNickName(tempStr); c.setNnameSet(1); return (NNAME_OK);
 }
 
 std::string Server::handleUserCommand(Client &c, char * user) {
-    if (c.getUserSet() || c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);
+    if (c.getUserSet() || c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);                       // user names can not have '@' or ' ' and have a maximum size of 9
     if (!user[0]) return (ERR_NEEDMOREPARAMS);                    
     int j = 0;
     while (user[j] && user[j] == ' ') j++;
-    if (j >= 1 || strlen(user) > 11) return (ERR_ERRONEOUSUSER);
+    if (j >= 1 || strlen(user) > 9) return (ERR_ERRONEOUSUSER);
     int i = 0;
-    int flagOp = 0;
     while (user[i]) {
-        if (user[i] == ' ') {
-            if (user[i + 1] && user[i + 1] == 'o' && !user[i + 2]) flagOp = 1; 
-            else return (ERR_ERRONEOUSUSER);
+        if (user[i] == ' ' || user[i] == '@') {
+            return (ERR_ERRONEOUSUSER);
         }
         i++;
     }
-    c.setUserName(user); c.setIsChanOp(flagOp); c.setUserSet(1); return (UNAME_OK);
-}
-
-int	stringCompareTheReturn(std::string first, std::string second) {
-	int	i = 0;
-	if (!first[0] || !second[0]) return (1);
-	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
-	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
-	return (1);
+    c.setUserName(user); c.setUserSet(1); return (UNAME_OK);
 }
 
 std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
     if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
     if (!privMsg[0]) return (ERR_NORECIPIENT);
     int i = 0;
-    while (privMsg[i] && privMsg[i] != ' ') i++;                                    // check sintassi privmsg
+    while (privMsg[i] && privMsg[i] != ' ') i++;                                    // privmsg syntax check: does not matter if dest is valid, just checks if there is text to send
     if (privMsg[i] && privMsg[i] == ' ') i++;
     if (!privMsg[i] || privMsg[i] == ' ') return (ERR_NOTEXTTOSEND);
     std::string tempPrivMsg(privMsg);
     std::string msgDest;
     int         destSocket;
     for (int i = 0; i < MAXCLIENTS; i++) {
-        if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {
+        if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {         // this is pretty self explanatory a tegridy check on dest needed to be executed
             msgDest = _clients[i].getNickName();
             destSocket = _clients[i].getSocketFd();
             break;

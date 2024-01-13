@@ -8,8 +8,6 @@ class Client {
         int                 _socketFd;
         std::string         _ipAddress;
         u_int16_t           _port;
-        // int                 _isReg;                             // set to 0 inside handleNewConnection
-        int                 _isChanOp;                          // set to 0 inside constructor
         std::string         _nickName;
         std::string         _userName;
         int                 _psswdGuessed;                      // used for handling new registrations, set to 0 inside constructor
@@ -20,8 +18,6 @@ class Client {
         int             getSocketFd(void) const;
         std::string     getIpAddress(void) const;
         u_int16_t       getPort(void) const;
-        // int             getIsReg(void) const;
-        int             getIsChanOp(void) const;
         std::string     getNickName(void) const;
         std::string     getUserName(void) const;
         int             getPsswdGuessed(void) const;
@@ -31,8 +27,6 @@ class Client {
         void            setSocketFd(int socketFd);
         void            setIpAddress(std::string ipAddress);
         void            setPort(u_int16_t port);
-        // void            setIsReg(int reg);
-        void            setIsChanOp(int chanOp);
         void            setNickName(std::string nname);
         void            setUserName(std::string uname);
         void            setPsswdGuessed(int pGuessed);

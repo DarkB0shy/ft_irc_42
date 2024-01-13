@@ -7,7 +7,9 @@
 void	handleSigInt(int signal);
 void    std_errore(const char *err);
 int     parseInt(std::string str);
+int     isAlpha(char c);
+int	    checkMssgSyntax(std::string msg);
 int	    stringCompare(char * first, std::string second);
-// int     checkCommandAndPrefix(std::string msg, std::string nname);
+int     stringCompareTheReturn(std::string first, std::string second);
 
 #endif
