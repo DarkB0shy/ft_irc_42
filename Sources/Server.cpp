@@ -132,6 +132,9 @@ void    Server::handleClientInput(Client &c) {
                 else if (!stringCompare(newMssg->getCommand(), "privmsg")) {                                        // privmsg command
                     serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
                 }
+                else if (!stringCompare(newMssg->getCommand(), "join")) {
+                    serverReply = handleJoinCommandOne(c, newMssg->getParameters());
+                }
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
                 else ;
             } else ;
@@ -140,21 +143,21 @@ void    Server::handleClientInput(Client &c) {
     }
 }
 
-std::string Server::handlePassCommand(Client &c, char * psswd) {
+std::string Server::handlePassCommand(Client &c, char * pass) {
     if (c.getHasBeenWelcomed()) return (ERR_ALREADYREGISTERED);
-    if (!stringCompare(psswd, _pass)) {
+    if (!stringCompare(pass, _pass)) {
         c.setPsswdGuessed(1) ;
         return (PSSWD_OK);
     } else return (ERR_PASSWDMISMATCH);
 }
 
-std::string Server::handleNickCommand(Client &c, char * nname) {
-    if (!nname[0]) return (ERR_NONICKNAMEGIVEN);
+std::string Server::handleNickCommand(Client &c, char * nick) {
+    if (!nick[0]) return (ERR_NONICKNAMEGIVEN);
     int i = 0;
-    while (nname[i]) i++;
+    while (nick[i]) i++;
     if (i > 9) return (ERR_ERRONEOUSNICKNAME);                      // nick names can be made up of any character but have a maximum size of 9
-    std::string tempStr(nname);
-    for (int j = 0; j < MAXCLIENTS; j++) if (!stringCompare(nname, _clients[j].getNickName())) return (ERR_NICKNAMEINUSE);          // it is very common for several people to want the same nickname
+    std::string tempStr(nick);
+    for (int j = 0; j < MAXCLIENTS; j++) if (!stringCompare(nick, _clients[j].getNickName())) return (ERR_NICKNAMEINUSE);          // it is very common for several people to want the same nickname
     c.setNickName(tempStr); c.setNnameSet(1); return (NNAME_OK);
 }
 
@@ -192,9 +195,52 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
         }
         if (i == MAXCLIENTS - 1) return (ERR_NOSUCHNICK);
     }
-    std::string toSend = "message from " + c.getNickName() + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
+    std::string toSend = "privmsg from " + c.getNickName() + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
     sendMessage(destSocket, toSend);
     return (MSG_OK);
+}
+
+std::string Server::handleJoinCommandOne(Client &c, char * join) {
+    if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
+    if (!join[0]) return (ERR_NEEDMOREPARAMS);
+    if (join[0] == ' ') return (ERR_ERRONEOUSCHANNAME);
+    int i = 0;
+    while (join[i]) {
+        if (join[i] == ' ') break;
+        if (join[i] == ',') return (ERR_ERRONEOUSCHANNAME);
+        i++;
+    }
+    std::string tempJoin(join);
+    std::string tempChanName = tempJoin.substr(0, tempJoin.find(' '));
+    int a = chanExists(tempChanName);
+    if (join[i] && join[i] == ' ' && join[i + 1] && _channels[a].getChanName()[0]) {                                             // if there is a character and the channel is valid (with an invitation key set) it means there is a channel password
+        // std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
+        return ("To be continued...");                                                          // joining an existent channel is handled in handleJoinCommandTwo
+    }
+    else if (join[i] && join[i] == ' ' && !join[i + 1]) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
+    else {
+        if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
+        if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) return ("To be continued...");   // joining an existent channel is handled in handleJoinCommandTwo
+        else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
+    }
+}
+
+int Server::chanExists(std::string chanName) {
+    int a = getNewChanIndex();                  // a is the index of the new channel or the one that the client is trying to join
+    if (!a) return (0);
+    int i = 0;
+    for (int i = 0; i < MAXCHANS; i++) {if (!stringCompareTheReturn(chanName, _channels[i].getChanName())) return (i);}
+    return (a);
+}
+
+int Server::getNewChanIndex(void) {
+    for (int i = 0; i < MAXCHANS; i++) {if (!_channels[i].getChanName()[0]) return (i);}            // gets the first free index inside _channels
+    return (-1);            // -1 means MAXCHANS has been reached
+}
+
+void    Server::createChan(std::string chanName, std::string chanFounder, int a) {
+    _channels[a].setChanName(chanName);
+    _channels[a].addChanOp(chanFounder);
 }
 
 Server::~Server (void) {}

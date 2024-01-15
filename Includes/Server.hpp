@@ -1,7 +1,8 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#define MAXCLIENTS 10
+#define MAXCLIENTS 50
+#define MAXCHANS 6
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
 #define CLOSEDCONN "Connection closed from (ip, port): "
@@ -18,17 +19,18 @@
 #define NEWCONNERR "could not establish new connection"
 #define OUTERR "could not send message"
 #define READERR "could not read message"
-
-
 #define PSSWD_OK "password correct"
 #define NNAME_OK "nickname set"
 #define UNAME_OK "username set"
 #define MSG_OK "message sent"
+#define CHAN_CREATED "channel created"
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
 #define RPL_CREATED "this server was created on new year's eve"
 #define RPL_MYINFO "<ircserv> <version 0> <available user modes: join, nick, privmsg, topic (is allowed by the channel)> <available channel modes (only for chanOps): invite, kick, mode (i, t, k, o, l), topic>"
 #define ERR_NOSUCHNICK "401"
+#define ERR_NOSUCHCHANNEL "403"
+#define ERR_TOOMANYCHANNELS "405"
 #define ERR_NORECIPIENT "411"
 #define ERR_NOTEXTTOSEND "412"
 #define ERR_UNKOWNCOMMAND "421"
@@ -40,10 +42,12 @@
 #define ERR_ALREADYREGISTERED "462"
 #define ERR_PASSWDMISMATCH "464"
 #define ERR_ERRONEOUSUSER "usernames can have up to 9 characters, and cannot have ' ' or '@'"
+#define ERR_ERRONEOUSCHANNAME "channel names can have up to 50 characters, and cannot have ' ' or ','"
 
 #include "Client.hpp"
 #include "Utils.hpp"
 #include "Message.hpp"
+#include "Channel.hpp"
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/in.h>		// holds the struct sockaddr_in
@@ -70,6 +74,7 @@ class   Server {
         std::string                     _hostname;
         std::string                     _pass;
         Client                          _clients[MAXCLIENTS];
+        Channel                         _channels[MAXCHANS];
     public:
         void        sendMessage(int sfd, const std::string &message);
         void        sendGoodMessage(int sfd, std::string sReply, std::string nname);
@@ -81,10 +86,14 @@ class   Server {
 		void        initClients(void);
         void        handleNewConnection(void);
         void        handleClientInput(Client &c);
-        std::string handlePassCommand(Client &c, char * psswd);
-        std::string handleNickCommand(Client &c, char * nname);
+        std::string handlePassCommand(Client &c, char * pass);
+        std::string handleNickCommand(Client &c, char * nick);
         std::string handleUserCommand(Client &c, char * user);
         std::string handlePrivMsgCommand(Client &c, char *privMsg);
+        std::string handleJoinCommandOne(Client &c, char * join);
+        int         chanExists(std::string chanName);
+        int         getNewChanIndex(void);
+        void        createChan(std::string chanName, std::string chanFounder, int a);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);
