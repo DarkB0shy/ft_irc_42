@@ -24,6 +24,7 @@
 #define UNAME_OK "username set"
 #define MSG_OK "message sent"
 #define CHAN_CREATED "channel created"
+#define CHAN_JOINED "you joined the channel "
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
 #define RPL_CREATED "this server was created on new year's eve"
@@ -42,7 +43,8 @@
 #define ERR_ALREADYREGISTERED "462"
 #define ERR_PASSWDMISMATCH "464"
 #define ERR_ERRONEOUSUSER "usernames can have up to 9 characters, and cannot have ' ' or '@'"
-#define ERR_ERRONEOUSCHANNAME "channel names can have up to 50 characters, and cannot have ' ' or ','"
+#define ERR_ERRONEOUSCHANNAME "channel names can have up to 50 characters, must start with &, and cannot have ' ' or ','"
+#define ERR_ALREADYONCHAN "you have already joined the channel"
 
 #include "Client.hpp"
 #include "Utils.hpp"
@@ -90,7 +92,7 @@ class   Server {
         std::string handleNickCommand(Client &c, char * nick);
         std::string handleUserCommand(Client &c, char * user);
         std::string handlePrivMsgCommand(Client &c, char *privMsg);
-        std::string handleJoinCommandOne(Client &c, char * join);
+        std::string handleJoinCommand(Client &c, char * join);
         int         chanExists(std::string chanName);
         int         getNewChanIndex(void);
         void        createChan(std::string chanName, std::string chanFounder, int a);

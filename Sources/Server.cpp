@@ -52,7 +52,7 @@ void    Server::handleNewConnection(void) {
 			_clients[i].setSocketFd(tempSocket.socket);
 			_clients[i].setIpAddress(inet_ntoa(tempSocket.address.sin_addr));
 			_clients[i].setPort(ntohs(tempSocket.address.sin_port));
-            // _clients[i].setHasBeenWelcomed(1);
+            _clients[i].setHasBeenWelcomed(1);
             std::cout<<CONNHANDLED<<_clients[i].getIpAddress()<<", "<<_clients[i].getPort()<<std::endl;
             break;
 		}
@@ -133,7 +133,7 @@ void    Server::handleClientInput(Client &c) {
                     serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
                 }
                 else if (!stringCompare(newMssg->getCommand(), "join")) {
-                    serverReply = handleJoinCommandOne(c, newMssg->getParameters());
+                    serverReply = handleJoinCommand(c, newMssg->getParameters());
                 }
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
                 else ;
@@ -187,23 +187,42 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
     std::string tempPrivMsg(privMsg);
     std::string msgDest;
     int         destSocket;
+    int         flag = 0;
+    std::string toSend = c.getNickName() + " privmsg " +  + ": " + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {         // this is pretty self explanatory a tegridy check on dest needed to be executed
             msgDest = _clients[i].getNickName();
             destSocket = _clients[i].getSocketFd();
+            sendMessage(destSocket, toSend);
             break;
         }
-        if (i == MAXCLIENTS - 1) return (ERR_NOSUCHNICK);
+        if (i == MAXCLIENTS - 1) {
+            for (int a = 0; a < MAXCHANS; a++) {
+                if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _channels[a].getChanName())) {
+                    flag = 1;
+                    std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ": " + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
+                    for (int b = 0; b < MAX_CHANMEMBERS; b++) { 
+                        int veryTempSocket = 0;
+                        if (_channels[a].isChanMember(_clients[b].getNickName())) veryTempSocket = _clients[b].getSocketFd();
+                        if (veryTempSocket) sendMessage(veryTempSocket, chanMsg);
+                    }
+                    break ;
+                }
+                if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
+                continue ;
+            }            
+            if (!flag) return (ERR_NOSUCHNICK);
+        }
     }
-    std::string toSend = "privmsg from " + c.getNickName() + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
-    sendMessage(destSocket, toSend);
     return (MSG_OK);
 }
 
-std::string Server::handleJoinCommandOne(Client &c, char * join) {
+std::string Server::handleJoinCommand(Client &c, char * join) {
     if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
     if (!join[0]) return (ERR_NEEDMOREPARAMS);
     if (join[0] == ' ') return (ERR_ERRONEOUSCHANNAME);
+    if (join[0] != '&') return (ERR_ERRONEOUSCHANNAME);
+    if (join[0] == '&' && join[1] && join[1] == ' ') return (ERR_ERRONEOUSCHANNAME);
     int i = 0;
     while (join[i]) {
         if (join[i] == ' ') break;
@@ -220,9 +239,13 @@ std::string Server::handleJoinCommandOne(Client &c, char * join) {
     else if (join[i] && join[i] == ' ' && !join[i + 1]) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
         if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
-        if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) return ("To be continued...");   // joining an existent channel is handled in handleJoinCommandTwo
+        if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
+            if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
+            _channels[a].addChanMember(c.getNickName()); return (CHAN_JOINED + tempChanName);
+        }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
     }
+    return ("...");
 }
 
 int Server::chanExists(std::string chanName) {
@@ -241,6 +264,7 @@ int Server::getNewChanIndex(void) {
 void    Server::createChan(std::string chanName, std::string chanFounder, int a) {
     _channels[a].setChanName(chanName);
     _channels[a].addChanOp(chanFounder);
+    _channels[a].addChanMember(chanFounder);
 }
 
 Server::~Server (void) {}
