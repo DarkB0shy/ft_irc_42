@@ -188,7 +188,7 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
     std::string msgDest;
     int         destSocket;
     int         flag = 0;
-    std::string toSend = c.getNickName() + " privmsg " +  + ": " + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
+    std::string toSend = c.getNickName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {         // this is pretty self explanatory a tegridy check on dest needed to be executed
             msgDest = _clients[i].getNickName();
@@ -196,12 +196,12 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
             sendMessage(destSocket, toSend);
             break;
         }
-        if (i == MAXCLIENTS - 1) {
+        if (i == MAXCLIENTS - 1) {                                                                                      // if a valid nick is not found, _channels is checked before returning ERR_NOSUCHNICK
             for (int a = 0; a < MAXCHANS; a++) {
                 if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _channels[a].getChanName())) {
                     flag = 1;
-                    std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ": " + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
-                    for (int b = 0; b < MAX_CHANMEMBERS; b++) { 
+                    std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
+                    for (int b = 0; b < MAX_CHANMEMBERS; b++) {                                                         // server is small so every client is subjected to scrutiny
                         int veryTempSocket = 0;
                         if (_channels[a].isChanMember(_clients[b].getNickName())) veryTempSocket = _clients[b].getSocketFd();
                         if (veryTempSocket) sendMessage(veryTempSocket, chanMsg);
@@ -221,6 +221,23 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
     if (!join[0]) return (ERR_NEEDMOREPARAMS);
     if (join[0] == ' ') return (ERR_ERRONEOUSCHANNAME);
+    if (join[0] == '0' && !join[1]) {                                       // handles join 0 which kicks the client from every channel he joined
+        for (int d = 0; d < MAXCHANS; d++) {
+            if (_channels[d].isChanMember(c.getNickName())) {
+                _channels[d].removeChanMember(c.getNickName());
+                _channels[d].removeChanOp(c.getNickName());
+                std::string tempChanLeaveNotice = _channels[d].getChanName() + " channel was left by " + c.getNickName();
+                char chanLeaveNotice[333];
+                int i = 0;
+                while (tempChanLeaveNotice[i]) {chanLeaveNotice[i] = tempChanLeaveNotice[i]; i++;}
+                chanLeaveNotice[i] = '\0';
+                handlePrivMsgCommand(c, chanLeaveNotice);
+                _channels[d].emptyChan();                                   // if the channel is empty, it ceases to exist
+            }
+            continue ;
+        }
+        return (JOINZERO);
+    }
     if (join[0] != '&') return (ERR_ERRONEOUSCHANNAME);
     if (join[0] == '&' && join[1] && join[1] == ' ') return (ERR_ERRONEOUSCHANNAME);
     int i = 0;
@@ -234,18 +251,25 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     int a = chanExists(tempChanName);
     if (join[i] && join[i] == ' ' && join[i + 1] && _channels[a].getChanName()[0]) {                                             // if there is a character and the channel is valid (with an invitation key set) it means there is a channel password
         // std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
-        return ("To be continued...");                                                          // joining an existent channel is handled in handleJoinCommandTwo
+        return ("To be continued...");                                                          // joining an existent channel which requires a password is going to be handled soon
     }
     else if (join[i] && join[i] == ' ' && !join[i + 1]) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
         if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
-            _channels[a].addChanMember(c.getNickName()); return (CHAN_JOINED + tempChanName);
+            _channels[a].addChanMember(c.getNickName());
+            std::string tempJoinChanNotice = tempChanName + " channel was joined by " + c.getNickName();
+            char joinChanNotice[333];
+            int i = 0;
+            while (tempJoinChanNotice[i]) {joinChanNotice[i] = tempJoinChanNotice[i]; i++;}
+            joinChanNotice[i] = '\0';
+            handlePrivMsgCommand(c, joinChanNotice);
+            return (CHAN_JOINED + tempChanName);
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
     }
-    return ("...");
+    return ("...");                           // this should never happen
 }
 
 int Server::chanExists(std::string chanName) {

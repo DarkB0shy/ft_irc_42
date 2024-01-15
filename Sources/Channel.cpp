@@ -47,6 +47,27 @@ int Channel::addChanMember(std::string nname) {
     return (-1);        // chanmembers limit reached
 }
 
+void    Channel::removeChanOp(std::string nname) {
+    for (int i = 0; i < MAX_CHANOPS; i++) {
+        if (!stringCompareTheReturn(nname, _chanOps[i])) {_chanOps[i].clear(); return ;}
+        continue;
+    }
+}
 
+void    Channel::removeChanMember(std::string nname) {
+    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+        if (!stringCompareTheReturn(nname, _chanMembers[i])) {_chanMembers[i].clear(); return ;}
+        continue;
+    }
+}
+
+void    Channel::emptyChan(void) {
+    int i = 0;
+    for (i = 0; i < MAX_CHANMEMBERS; i++) {
+        if (!_chanMembers[i][0]) continue;
+        else break;
+    }
+    if (i == MAX_CHANMEMBERS) _chanName.clear();
+}
 
 Channel::~Channel () {};

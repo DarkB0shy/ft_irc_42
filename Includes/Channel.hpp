@@ -18,8 +18,11 @@ class Channel {
         void        setChanName(std::string);
         int         addChanOp(std::string nname);       // returns 0 if MAX_CHANOPS has been reached
         int         addChanMember(std::string nname);
+        void        removeChanOp(std::string nname);
+        void        removeChanMember(std::string nname);
         int         isChanOp(std::string nname);        // returns 1 if nname is inside _chanOps
         int         isChanMember(std::string name);
+        void        emptyChan(void);                    // checks if the channel is empty once a user left
         Channel(void);
         Channel(const Channel &chan);
         Channel &operator=(const Channel &chan);
