@@ -13,9 +13,12 @@ class Channel {
         std::string _chanOps[MAX_CHANOPS];
         std::string _chanModes[MAX_CHANMODES];
         std::string _chanMembers[MAX_CHANMEMBERS];
+        std::string _chanTopic;
     public:
         std::string getChanName(void) const;
-        void        setChanName(std::string);
+        std::string getChanTopic(void) const;
+        void        setChanName(std::string chanName);
+        void        setChanTopic(std::string chanTopic);
         int         addChanOp(std::string nname);       // returns 0 if MAX_CHANOPS has been reached
         int         addChanMember(std::string nname);
         void        removeChanOp(std::string nname);

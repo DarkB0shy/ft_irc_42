@@ -201,9 +201,9 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
                 if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _channels[a].getChanName())) {
                     flag = 1;
                     std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
-                    for (int b = 0; b < MAX_CHANMEMBERS; b++) {                                                         // server is small so every client is subjected to scrutiny
+                    for (int b = 0; b < MAX_CHANMEMBERS; b++) {
                         int veryTempSocket = 0;
-                        if (_channels[a].isChanMember(_clients[b].getNickName())) veryTempSocket = _clients[b].getSocketFd();
+                        if (_channels[a].isChanMember(_clients[b].getNickName())) veryTempSocket = _clients[b].getSocketFd();       // save the socket of every client connected to chan
                         if (veryTempSocket) sendMessage(veryTempSocket, chanMsg);
                     }
                     break ;
@@ -253,23 +253,34 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         // std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
         return ("To be continued...");                                                          // joining an existent channel which requires a password is going to be handled soon
     }
-    else if (join[i] && join[i] == ' ' && !join[i + 1]) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
+    else if (join[i] && join[i] == ' ' && (!join[i + 1] || (join[i + 1] && join[i + 1] == ' '))) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
         if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
-            _channels[a].addChanMember(c.getNickName());
             std::string tempJoinChanNotice = tempChanName + " channel was joined by " + c.getNickName();
             char joinChanNotice[333];
             int i = 0;
             while (tempJoinChanNotice[i]) {joinChanNotice[i] = tempJoinChanNotice[i]; i++;}
             joinChanNotice[i] = '\0';
             handlePrivMsgCommand(c, joinChanNotice);
-            return (CHAN_JOINED + tempChanName);
+            _channels[a].addChanMember(c.getNickName());
+            if (!_channels[a].getChanTopic()[0]) sendGoodMessage(c.getSocketFd(), RPL_NO_TOPIC, c.getNickName());        // tells the new chan member about the topic if there is one
+            else {
+                std::string rplTopic = RPL_TOPIC + _channels[a].getChanTopic();
+                sendGoodMessage(c.getSocketFd(), rplTopic, c.getNickName());
+            }
+            std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online channel members
+            for (int k = 0; k < MAX_CHANMEMBERS; k++) {
+                if (!stringCompareTheReturn(_clients[k].getNickName(), c.getNickName())) break ;
+                if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
+                continue;
+            }
+            sendGoodMessage(c.getSocketFd(), onlineMembers, c.getNickName());
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
     }
-    return ("...");                           // this should never happen
+    return (CHAN_JOINED);
 }
 
 int Server::chanExists(std::string chanName) {
@@ -289,6 +300,7 @@ void    Server::createChan(std::string chanName, std::string chanFounder, int a)
     _channels[a].setChanName(chanName);
     _channels[a].addChanOp(chanFounder);
     _channels[a].addChanMember(chanFounder);
+    if (a % 2 == 0) _channels[a].setChanTopic("Fuffa");
 }
 
 Server::~Server (void) {}

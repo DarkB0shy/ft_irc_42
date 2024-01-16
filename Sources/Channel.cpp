@@ -13,7 +13,11 @@ Channel &Channel::operator=(const Channel &chan) {
 
 std::string Channel::getChanName(void) const {return _chanName;}
 
+std::string Channel::getChanTopic(void) const {return _chanTopic;}
+
 void    Channel::setChanName(std::string chanName) {_chanName = chanName;}
+
+void    Channel::setChanTopic(std::string chanTopic) {_chanTopic = chanTopic;}
 
 int Channel::isChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
