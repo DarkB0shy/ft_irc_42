@@ -260,13 +260,14 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
     if (!join[0]) return (ERR_NEEDMOREPARAMS);
     if (join[0] == ' ') return (ERR_ERRONEOUSCHANNAME);
-    if (join[0] == '0' && !join[1]) {                                       // handles join 0 which kicks the client from every channel he joined
+    if (join[0] == '0' && !join[1]) {                                       // handles join 0 which kicks the client from every channel he joined, sending a "quit" message to the other members of the channels the client was in
         for (int d = 0; d < MAXCHANS; d++) {
             if (_channels[d].isChanMember(c.getNickName())) {
                 _channels[d].removeChanMember(c.getNickName());
+                _channels[d].emptyChan();                                   // if the channel is empty, it ceases to exist
                 if (_channels[d].getChanName()[0]) {
                     std::string chanLeaveNotice = _channels[d].getChanName() + " channel was left by";
-                    for (int aa = 0; aa < MAX_CHANMEMBERS; aa++) {
+                    for (int aa = 0; aa < _channels[d].getChanSize(); aa++) {
                         int extremelyTempSocket = 0;
                         if (_channels[d].isChanMember(_clients[aa].getNickName())) extremelyTempSocket = _clients[aa].getSocketFd();
                         if (extremelyTempSocket) {
@@ -278,7 +279,6 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
                     }
                 }
                 _channels[d].removeChanOp(c.getNickName());
-                _channels[d].emptyChan();                                   // if the channel is empty, it ceases to exist
             }
             continue ;
         }
@@ -301,7 +301,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         if (!tempChanKey[0]) return (ERR_PASSWDMISMATCH);
         if (!stringCompareTheReturn(_channels[a].getChanKey(), tempChanKey)) {
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
-            if (_channels[a].addChanMember("fullChanCheck") == _channels[a].getChanSize()) return (ERR_CHANNELLISFULL);
+            if (_channels[a].fullChan()) return (ERR_CHANNELLISFULL);
             else sendJoinNotice(a, c, tempChanName);
         } else return (ERR_PASSWDMISMATCH);
     }
@@ -311,17 +311,18 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         if (a == MAXCHANS - 1) return (ERR_TOOMANYCHANNELS);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
-            if (_channels[a].addChanMember("fullChanCheck") == _channels[a].getChanSize()) return (ERR_CHANNELLISFULL);
+            if (_channels[a].fullChan()) return (ERR_CHANNELLISFULL);
             else sendJoinNotice(a, c, tempChanName);
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
     }
+    // sendJoinNotice(a, c, tempChanName);
     return (CHAN_JOINED);
 }
 
 void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
-    std::string joinChanNotice = tempChanName + " channel was joined by";                               // sending a join notice to every connected user
-    for (int u = 0; u < MAX_CHANMEMBERS; u++) {
+    std::string joinChanNotice = tempChanName + " channel was joined by";                               // sends a join notice to every connected user
+    for (int u = 0; u < _channels[a].getChanSize(); u++) {
         if (_channels[a].isChanMember(_clients[u].getNickName())) {
             int ratherTempSocket = 0;
             ratherTempSocket = _clients[u].getSocketFd();
@@ -334,8 +335,8 @@ void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
         std::string rplTopic = RPL_TOPIC + _channels[a].getChanTopic();
         sendGoodMessage(c.getSocketFd(), rplTopic, c.getNickName());
     }
-    std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online channel members
-    for (int k = 0; k < MAX_CHANMEMBERS; k++) {
+    std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online members
+    for (int k = 0; k < _channels[a].getChanSize(); k++) {
         if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
         continue;
     }

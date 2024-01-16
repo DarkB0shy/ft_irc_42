@@ -2,7 +2,7 @@
 #define CHANNEL_HPP
 
 #define MAX_CHANMODES 6
-#define MAX_CHANMEMBERS 50
+#define MAX_CHANMEMBERS 2
 #define MAX_CHANOPS 50
 
 #include <string>

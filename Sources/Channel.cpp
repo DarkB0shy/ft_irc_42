@@ -94,12 +94,20 @@ void    Channel::emptyChan(void) {
     int i = 0;
     for (i = 0; i < _chanSize; i++) {
         if (!_chanMembers[i][0]) continue;
-        else if (!stringCompareTheReturn(_chanMembers[i], "fullChanCheck")) break ;
+        // else if (!stringCompareTheReturn(_chanMembers[i], "fullChanCheck")) {removeChanMember("fullChanCheck"); break ;}
         else return ;
     }
+    for (int a = 0; a < _chanSize; a++) _chanMembers[i] = {'\0'};
     _chanName = {'\0'};
     _chanTopic = {'\0'};
     _chanKey = {'\0'};
+}
+
+int Channel::fullChan(void) {
+    int i = 0;
+    while (_chanMembers[i][0]) i++;
+    if (i == _chanSize + 1) return (1);
+    else return (0);
 }
 
 Channel::~Channel () {};
