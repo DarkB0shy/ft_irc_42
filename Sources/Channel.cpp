@@ -17,11 +17,15 @@ std::string Channel::getChanTopic(void) const {return _chanTopic;}
 
 std::string Channel::getChanKey(void) const {return _chanKey;}
 
+int Channel::getChanSize(void) const {return _chanSize;}
+
 void    Channel::setChanName(std::string chanName) {_chanName = chanName;}
 
 void    Channel::setChanTopic(std::string chanTopic) {_chanTopic = chanTopic;}
 
 void    Channel::setChanKey(std::string chanKey) {_chanKey = chanKey;}
+
+void    Channel::setChanSize(int chanSize) {_chanSize = chanSize;}
 
 int Channel::isChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
@@ -41,19 +45,21 @@ int Channel::isChanMember(std::string nname) {
 
 int Channel::addChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
-        if (!_chanOps[i][0]) _chanOps[i] = nname; return (i);
+        if (!_chanOps[i][0]) {_chanOps[i] = nname; return (i);}
         continue;
     }
     return (-1);        // -1 means chanops limit has been reached
 }
 
 int Channel::addChanMember(std::string nname) {
-    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+    int i = 0;
+    for (i = 0; i < _chanSize; i++) {
         if (!_chanMembers[i][0]) {_chanMembers[i] = nname; return (i);}
         continue;    
     }
-    return (-1);        // chanmembers limit reached
+    return (i);        // chanmembers limit reached
 }
+
 
 int Channel::addChanMode(std::string chanMode) {
     for (int i = 0; i < MAX_CHANMODES; i++) {
@@ -65,13 +71,13 @@ int Channel::addChanMode(std::string chanMode) {
 
 void    Channel::removeChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
-        if (!stringCompareTheReturn(nname, _chanOps[i])) {_chanOps[i].clear(); return ;}
+        if (!stringCompareTheReturn(nname, _chanOps[i])) {_chanOps[i] = {'\0'}; return ;}
         continue;
     }
 }
 
 void    Channel::removeChanMember(std::string nname) {
-    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+    for (int i = 0; i < _chanSize; i++) {
         if (!stringCompareTheReturn(nname, _chanMembers[i])) {_chanMembers[i].clear(); return ;}
         continue;
     }
@@ -79,18 +85,21 @@ void    Channel::removeChanMember(std::string nname) {
 
 void    Channel::removeChanMode(std::string chanMode) {
     for (int i = 0; i < MAX_CHANMODES; i++) {
-        if (!stringCompareTheReturn(chanMode, _chanModes[i])) {_chanModes[i].clear(); return ;}
+        if (!stringCompareTheReturn(chanMode, _chanModes[i])) {_chanModes[i] = {'\0'}; return ;}
         continue ;
     }
 }
 
 void    Channel::emptyChan(void) {
     int i = 0;
-    for (i = 0; i < MAX_CHANMEMBERS; i++) {
+    for (i = 0; i < _chanSize; i++) {
         if (!_chanMembers[i][0]) continue;
-        else break;
+        else if (!stringCompareTheReturn(_chanMembers[i], "fullChanCheck")) break ;
+        else return ;
     }
-    if (i == MAX_CHANMEMBERS) _chanName.clear();
+    _chanName = {'\0'};
+    _chanTopic = {'\0'};
+    _chanKey = {'\0'};
 }
 
 Channel::~Channel () {};

@@ -265,14 +265,14 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
             if (_channels[d].isChanMember(c.getNickName())) {
                 _channels[d].removeChanMember(c.getNickName());
                 if (_channels[d].getChanName()[0]) {
-                    std::string chanLeaveNotice = _channels[d].getChanName() + " channel was left by " + c.getNickName();
+                    std::string chanLeaveNotice = _channels[d].getChanName() + " channel was left by";
                     for (int aa = 0; aa < MAX_CHANMEMBERS; aa++) {
                         int extremelyTempSocket = 0;
                         if (_channels[d].isChanMember(_clients[aa].getNickName())) extremelyTempSocket = _clients[aa].getSocketFd();
                         if (extremelyTempSocket) {
                             if (_channels[d].isChanOp(c.getNickName())) {
-                                std::string opChanLeaveNotice = _channels[d].getChanName() + " channel was left by @" + c.getNickName();
-                                sendGoodMessage(extremelyTempSocket, opChanLeaveNotice, c.getNickName());
+                                std::string opChanLeaveNotice = _channels[d].getChanName() + " channel was left by";
+                                sendGoodMessage(extremelyTempSocket, opChanLeaveNotice, "@" + c.getNickName());
                             } else sendGoodMessage(extremelyTempSocket, chanLeaveNotice, c.getNickName());
                         }
                     }
@@ -301,15 +301,17 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         if (!tempChanKey[0]) return (ERR_PASSWDMISMATCH);
         if (!stringCompareTheReturn(_channels[a].getChanKey(), tempChanKey)) {
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
+            if (_channels[a].addChanMember("fullChanCheck") == _channels[a].getChanSize()) return (ERR_CHANNELLISFULL);
             else sendJoinNotice(a, c, tempChanName);
         } else return (ERR_PASSWDMISMATCH);
     }
-    else if (join[i] && join[i] == ' ' && (!join[i + 1] || (join[i + 1] && join[i + 1] == ' '))) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
+    else if (join[i] && join[i] == ' ' && (!join[i + 1] || join[i + 1])) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
         if (strlen(join) == _channels[a].getChanName().length() && _channels[a].getChanKey()[0]) return (ERR_PASSWDMISMATCH);                 // had to be handled
         if (a == MAXCHANS - 1) return (ERR_TOOMANYCHANNELS);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
+            if (_channels[a].addChanMember("fullChanCheck") == _channels[a].getChanSize()) return (ERR_CHANNELLISFULL);
             else sendJoinNotice(a, c, tempChanName);
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
@@ -359,7 +361,7 @@ void    Server::createChan(std::string chanName, std::string chanFounder, int a)
     _channels[a].addChanOp(chanFounder);
     _channels[a].addChanMember(chanFounder);
     if (a % 2 == 0) _channels[a].setChanTopic("Fuffa");
-    if (a % 2 == 0) _channels[a].setChanKey("pass");
+    // if (a % 2 == 0) _channels[a].setChanKey("pass");
 }
 
 std::string Server::handleModeCommandOne(Client &c, char * mode) {
@@ -383,7 +385,7 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
     std::string tempChanMode(mode);
     int a = 0;
     a = chanExists(tempChanMode.substr(0, tempChanMode.find(' ')));
-    if (!_channels[a].getChanName()[0]) return ("ERR_NEEDMOREPARAMS");
+    if (!_channels[a].getChanName()[0]) return (ERR_INVALIDCHANAME);
     int i = 0;
     while (mode[i]) {
         if (mode[i] == ' ') break;
@@ -391,10 +393,22 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
     }
     i++;
     if (mode[i] == '+' && mode[i + 1] == 'k') {         // +k mode, sets the channel key
+        if (_channels[a].getChanKey()[0]) return (ERR_KEYSET);
+        if (i == strlen(mode)) return (ERR_NEEDMOREPARAMS);
         _channels[a].addChanMode("+k");
         _channels[a].setChanKey(tempChanMode.substr(i + 3, tempChanMode.length()));
     }
-    return ("MODE HANDLD");
+    else if (mode[i] == '-' && mode[i + 1] == 'k') {    // -k removes the channel key (if there is one and is given)
+        if (!_channels[a].getChanKey()[0]) return ("channel key is not set");
+        if (i == strlen(mode)) return (ERR_NEEDMOREPARAMS);
+        if (!stringCompareTheReturn(tempChanMode.substr(i + 3, tempChanMode.length()), _channels[a].getChanKey())) {
+            _channels[a].removeChanMode("+k");
+            _channels[a].addChanMode("-k");
+            _channels[a].setChanKey({'\0'});
+            return ("channel key unset");
+        } else return (ERR_PASSWDMISMATCH);
+    }
+    return ("channel mode applied");
 }
 
 Server::~Server (void) {}

@@ -9,16 +9,16 @@ SRCS = main.cpp Sources/Server.cpp Sources/Client.cpp Sources/Utils.cpp Sources/
 OBJS = ${SRCS:.cpp=.o}
 
 %.o: %.cpp
-	@${CC} ${FLAG} -c $< -o $@
+	${CC} ${FLAG} -c $< -o $@
 
 $(NAME): $(OBJS)
-	@$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
+	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
 	@echo "$(NAME) compiled"
 
 all:	$(NAME)
 
 clean:
-	@rm -rf $(OBJS)
+	rm -rf $(OBJS)
 	@echo "$(NAME) cleaned"
 
 fclean:	clean
