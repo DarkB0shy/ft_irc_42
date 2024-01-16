@@ -47,3 +47,69 @@ int	stringCompareTheReturn(std::string first, std::string second) {
 	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
 	return (1);
 }
+
+int checkModeSyntaxTwo(char * mode, int *i) {               // checks for modes that accept a maximum of 3 parametrs (o, k)
+    (*i)++;
+    if (!mode[(*i)]) return (1); // ERR_NEEDMOREPARAMS
+    else {
+        if (mode[(*i)] == ' ') {
+            if (!mode[(*i) + 1]) return (1); // ERR_NEEDMOREPARAMS
+            else {                          // just checks if there are more than 3 "valid" nicknames
+                (*i)++;
+                int tooManyParams = 0;
+                while (mode[(*i)]) {
+                    if (mode[(*i)] == ' ') tooManyParams++;
+                    (*i)++;
+                }
+                if (tooManyParams > 2) return (3); // ERR_TOOMANYPARAMS
+            }
+        }
+    }
+    return (0);
+}
+
+int isDigit(char c) {
+    if (c >= '0' && c <= '9') return (1);
+    return (0);
+}
+
+int checkModeSyntaxOne(char * mode) {
+    // if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED)
+    if (!mode[0]) return (1);           // ERR_NEEDMOREPARAMS
+    if (mode[0] != '&') return (1);     // ERR_NEEDMOREPARAMS
+    if (mode[0] == '&' && mode[1] && mode[1] == ' ') return (1);    // ERR_NEEDMOREPARAMS
+    int i = 0;
+    int returnInt = 0;
+    while (mode[i]) {
+        if (mode[i] == ' ') break ;
+        i++;
+    }
+    if (!mode[i]) return (2); // ERR_NOCHANMODES
+    if (mode[i] && mode[i] == ' ' && !mode[i + 1]) return (2); // ERR_NOCHANMODES
+    if (mode[i] == ' ' && (mode[i + 1] == '-' || mode[i + 1] == '+')) {
+        i++;
+        if (!mode[i + 1]) return (2); // ERR_NOCHANMODES
+        else {
+            i++;
+            if (mode[i] == 'o' || mode[i] == 'k') {
+                returnInt = checkModeSyntaxTwo(mode, &i);
+            }
+            else if (mode[i] == 'i' || mode[i] == 't') {
+                if (mode[i + 1]) return (3);       // ERR_TOOMANYPARAMETERS
+            }
+            else if (mode[i] == 'l') {
+                if (mode[i + 1] && mode[i + 1] == ' ' && mode[i + 2] && isDigit(mode[i + 2])) {
+                    i = i + 2;
+                    while (mode[i]) {
+                        if (!isDigit(mode[i])) return (3); // ERR_TOOMANYPARAMETERS
+                        if (mode[i] == ' ') return (3); // ERR_TOOMANYPARAMETERS
+                        i++;
+                    }
+                }
+                else return (1);   // ERR_NEEDMOREPARAMS
+            }
+            else return (2); // ERR_NOCHANMODES
+        }
+    } else return (2); // ERR_NOCHANMODES
+    return (returnInt);
+}

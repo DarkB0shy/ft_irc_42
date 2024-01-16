@@ -103,18 +103,18 @@ void    Server::handleClientInput(Client &c) {
     if (valread == -1) std_errore(READERR);
     else if (valread == 0) {                                                                                    // valread returns 0 when the connection to the socket is lost
         std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
-        for (int x = 0; x < MAXCHANS; x++) {
+        for (int x = 0; x < MAXCHANS; x++) {                                                                    // a "quit" message is sent to every channel the client was in
             if (_channels[x].isChanMember(c.getNickName())) {
                 _channels[x].removeChanMember(c.getNickName());
                 if (_channels[x].getChanName()[0]) {
-                    std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by " + c.getNickName();
+                    std::string chanLeaveNotice = _channels[x].getChanName() + "channel was left by";
                     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
                         int quiteTempSocket = 0;
                         if (_channels[x].isChanMember(_clients[i].getNickName())) quiteTempSocket = _clients[i].getSocketFd();
                         if (quiteTempSocket) {
                             if (_channels[x].isChanOp(c.getNickName())) {
-                                std::string opChanLeaveNotice = _channels[x].getChanName() + " channel was left by @" + c.getNickName();
-                                sendGoodMessage(quiteTempSocket, opChanLeaveNotice, c.getNickName());
+                                std::string opChanLeaveNotice = _channels[x].getChanName() + "channel was left by";
+                                sendGoodMessage(quiteTempSocket, opChanLeaveNotice, "@"+ c.getNickName());
                             } else sendGoodMessage(quiteTempSocket, chanLeaveNotice, c.getNickName());
                         }
                     }
@@ -124,6 +124,7 @@ void    Server::handleClientInput(Client &c) {
             }
             continue ;
         }
+        c.setNickName({'\0'});
         c.setSocketFd(0);
         return ;
     }
@@ -155,6 +156,12 @@ void    Server::handleClientInput(Client &c) {
                 }
                 else if (!stringCompare(newMssg->getCommand(), "join")) {
                     serverReply = handleJoinCommand(c, newMssg->getParameters());
+                }
+                else if (!stringCompare(newMssg->getCommand(), "mode")) {
+                    serverReply = handleModeCommandOne(c, newMssg->getParameters());
+                    if (!stringCompareTheReturn("CHAN OP", serverReply)) {
+                        serverReply = handleModeCommandTwo(c, newMssg->getParameters());
+                    }
                 }
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
                 else ;
@@ -278,6 +285,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         return (JOINZERO);
     }
     if (join[0] != '&') return (ERR_ERRONEOUSCHANNAME);
+    if (join[0] == '&' && !join[1]) return (ERR_ERRONEOUSCHANNAME);
     if (join[0] == '&' && join[1] && join[1] == ' ') return (ERR_ERRONEOUSCHANNAME);
     int i = 0;
     while (join[i]) {
@@ -288,40 +296,49 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     std::string tempJoin(join);
     std::string tempChanName = tempJoin.substr(0, tempJoin.find(' '));
     int a = chanExists(tempChanName);
-    if (join[i] && join[i] == ' ' && join[i + 1] && _channels[a].getChanName()[0]) {                                             // if there is a character and the channel is valid (with an invitation key set) it means there is a channel password
-        // std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
-        return ("To be continued...");                                                          // joining an existent channel which requires a password is going to be handled soon
+    if (join[i] && join[i] == ' ' && join[i + 1] && _channels[a].getChanKey()[0]) {                                             // if there is a character and the channel is valid (with an invitation key set) it means there is a channel password
+        std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
+        if (!tempChanKey[0]) return (ERR_PASSWDMISMATCH);
+        if (!stringCompareTheReturn(_channels[a].getChanKey(), tempChanKey)) {
+            if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
+            else sendJoinNotice(a, c, tempChanName);
+        } else return (ERR_PASSWDMISMATCH);
     }
     else if (join[i] && join[i] == ' ' && (!join[i + 1] || (join[i + 1] && join[i + 1] == ' '))) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
+        if (strlen(join) == _channels[a].getChanName().length() && _channels[a].getChanKey()[0]) return (ERR_PASSWDMISMATCH);                 // had to be handled
         if (a == MAXCHANS - 1) return (ERR_TOOMANYCHANNELS);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
-            std::string joinChanNotice = tempChanName + " channel was joined by";                               // sending a join notice to every connected user
-            for (int u = 0; u < MAX_CHANMEMBERS; u++) {
-                if (_channels[a].isChanMember(_clients[u].getNickName())) {
-                    int ratherTempSocket = 0;
-                    ratherTempSocket = _clients[u].getSocketFd();
-                    if (ratherTempSocket) sendGoodMessage(ratherTempSocket, joinChanNotice, c.getNickName());
-                }
-            }
-            _channels[a].addChanMember(c.getNickName());
-            if (!_channels[a].getChanTopic()[0]) sendGoodMessage(c.getSocketFd(), RPL_NO_TOPIC, c.getNickName());        // tells the new chan member about the topic if there is one
-            else {
-                std::string rplTopic = RPL_TOPIC + _channels[a].getChanTopic();
-                sendGoodMessage(c.getSocketFd(), rplTopic, c.getNickName());
-            }
-            std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online channel members
-            for (int k = 0; k < MAX_CHANMEMBERS; k++) {
-                if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
-                continue;
-            }
-            onlineMembers.erase(onlineMembers.length());
-            sendGoodMessage(c.getSocketFd(), onlineMembers, c.getNickName());
+            else sendJoinNotice(a, c, tempChanName);
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
     }
     return (CHAN_JOINED);
+}
+
+void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
+    std::string joinChanNotice = tempChanName + " channel was joined by";                               // sending a join notice to every connected user
+    for (int u = 0; u < MAX_CHANMEMBERS; u++) {
+        if (_channels[a].isChanMember(_clients[u].getNickName())) {
+            int ratherTempSocket = 0;
+            ratherTempSocket = _clients[u].getSocketFd();
+            if (ratherTempSocket) sendGoodMessage(ratherTempSocket, joinChanNotice, c.getNickName());
+        }
+    }
+    _channels[a].addChanMember(c.getNickName());
+    if (!_channels[a].getChanTopic()[0]) sendGoodMessage(c.getSocketFd(), RPL_NO_TOPIC, c.getNickName());        // tells the new chan member about the topic if there is one
+    else {
+        std::string rplTopic = RPL_TOPIC + _channels[a].getChanTopic();
+        sendGoodMessage(c.getSocketFd(), rplTopic, c.getNickName());
+    }
+    std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online channel members
+    for (int k = 0; k < MAX_CHANMEMBERS; k++) {
+        if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
+        continue;
+    }
+    onlineMembers.erase(onlineMembers.length());
+    sendGoodMessage(c.getSocketFd(), onlineMembers, c.getNickName());
 }
 
 int Server::chanExists(std::string chanName) {
@@ -342,6 +359,42 @@ void    Server::createChan(std::string chanName, std::string chanFounder, int a)
     _channels[a].addChanOp(chanFounder);
     _channels[a].addChanMember(chanFounder);
     if (a % 2 == 0) _channels[a].setChanTopic("Fuffa");
+    if (a % 2 == 0) _channels[a].setChanKey("pass");
+}
+
+std::string Server::handleModeCommandOne(Client &c, char * mode) {
+    if (!c.getHasBeenWelcomed()) return (ERR_NOTREGISTRED);
+    int i = 0;
+    i = checkModeSyntaxOne(mode);
+    if (i == 1) return (ERR_NEEDMOREPARAMS);
+    if (i == 2) return (ERR_NOCHANMODES);
+    if (i == 3) return (ERR_TOOMANYPARAMETERS);
+    std::string tempChanMode(mode);
+    for (int a = 0; a < MAXCHANS; a++) {
+        if (_channels[chanExists(tempChanMode.substr(0, tempChanMode.find(' ')))].getChanName()[0]) {
+            if (_channels[a].isChanMember(c.getNickName()) && _channels[a].isChanOp(c.getNickName())) return ("CHAN OP");
+        }
+        continue ;
+    }
+    return (ERR_CHANOPRIVSNEEDED);
+}
+
+std::string Server::handleModeCommandTwo(Client &c, char * mode) {
+    std::string tempChanMode(mode);
+    int a = 0;
+    a = chanExists(tempChanMode.substr(0, tempChanMode.find(' ')));
+    if (!_channels[a].getChanName()[0]) return ("ERR_NEEDMOREPARAMS");
+    int i = 0;
+    while (mode[i]) {
+        if (mode[i] == ' ') break;
+        i++;
+    }
+    i++;
+    if (mode[i] == '+' && mode[i + 1] == 'k') {         // +k mode, sets the channel key
+        _channels[a].addChanMode("+k");
+        _channels[a].setChanKey(tempChanMode.substr(i + 3, tempChanMode.length()));
+    }
+    return ("MODE HANDLD");
 }
 
 Server::~Server (void) {}

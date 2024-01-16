@@ -47,9 +47,12 @@
 #define ERR_NEEDMOREPARAMS "461"
 #define ERR_ALREADYREGISTERED "462"
 #define ERR_PASSWDMISMATCH "464"
+#define ERR_NOCHANMODES "477"
+#define ERR_CHANOPRIVSNEEDED "482"
 #define ERR_ERRONEOUSUSER "usernames can have up to 9 characters, and cannot have ' ' or '@'"
 #define ERR_ERRONEOUSCHANNAME "channel names can have up to 50 characters, must start with &, and cannot have ' ' or ','"
 #define ERR_ALREADYONCHAN "you have already joined the channel"
+#define ERR_TOOMANYPARAMETERS "mode takes a maximum of 3 arguments per parameter"
 
 #include "Client.hpp"
 #include "Utils.hpp"
@@ -98,9 +101,12 @@ class   Server {
         std::string handleUserCommand(Client &c, char * user);
         std::string handlePrivMsgCommand(Client &c, char *privMsg);
         std::string handleJoinCommand(Client &c, char * join);
+        void        sendJoinNotice(int a, Client &c, std::string tempChanName);
         int         chanExists(std::string chanName);
         int         getNewChanIndex(void);
         void        createChan(std::string chanName, std::string chanFounder, int a);
+        std::string handleModeCommandOne(Client &c, char * mode);
+        std::string handleModeCommandTwo(Client &c, char * mode);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);

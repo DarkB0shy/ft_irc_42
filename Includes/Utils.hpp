@@ -11,5 +11,8 @@ int     isAlpha(char c);
 int	    checkMssgSyntax(std::string msg);
 int	    stringCompare(char * first, std::string second);
 int     stringCompareTheReturn(std::string first, std::string second);
+int     isDigit(char c);
+int     checkModeSyntaxOne(char * mode);
+int     checkModeSyntaxTwo(char * mode, int *i);
 
 #endif

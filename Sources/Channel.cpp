@@ -15,13 +15,25 @@ std::string Channel::getChanName(void) const {return _chanName;}
 
 std::string Channel::getChanTopic(void) const {return _chanTopic;}
 
+std::string Channel::getChanKey(void) const {return _chanKey;}
+
 void    Channel::setChanName(std::string chanName) {_chanName = chanName;}
 
 void    Channel::setChanTopic(std::string chanTopic) {_chanTopic = chanTopic;}
 
+void    Channel::setChanKey(std::string chanKey) {_chanKey = chanKey;}
+
 int Channel::isChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
         if (!stringCompareTheReturn(nname, _chanOps[i])) return (1);
+        continue;
+    }
+    return (0);
+}
+
+int Channel::isChanMember(std::string nname) {
+    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+        if (!stringCompareTheReturn(nname, _chanMembers[i])) return (1);
         continue;
     }
     return (0);
@@ -35,20 +47,20 @@ int Channel::addChanOp(std::string nname) {
     return (-1);        // -1 means chanops limit has been reached
 }
 
-int Channel::isChanMember(std::string nname) {
-    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
-        if (!stringCompareTheReturn(nname, _chanMembers[i])) return (1);
-        continue;
-    }
-    return (0);
-}
-
 int Channel::addChanMember(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
         if (!_chanMembers[i][0]) {_chanMembers[i] = nname; return (i);}
         continue;    
     }
     return (-1);        // chanmembers limit reached
+}
+
+int Channel::addChanMode(std::string chanMode) {
+    for (int i = 0; i < MAX_CHANMODES; i++) {
+        if (!_chanModes[i][0]) {_chanModes[i] = chanMode; return (i);}
+        continue;
+    }
+    return (-1);
 }
 
 void    Channel::removeChanOp(std::string nname) {
@@ -62,6 +74,13 @@ void    Channel::removeChanMember(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
         if (!stringCompareTheReturn(nname, _chanMembers[i])) {_chanMembers[i].clear(); return ;}
         continue;
+    }
+}
+
+void    Channel::removeChanMode(std::string chanMode) {
+    for (int i = 0; i < MAX_CHANMODES; i++) {
+        if (!stringCompareTheReturn(chanMode, _chanModes[i])) {_chanModes[i].clear(); return ;}
+        continue ;
     }
 }
 

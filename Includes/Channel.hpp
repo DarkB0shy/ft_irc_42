@@ -14,15 +14,20 @@ class Channel {
         std::string _chanModes[MAX_CHANMODES];
         std::string _chanMembers[MAX_CHANMEMBERS];
         std::string _chanTopic;
+        std::string _chanKey;
     public:
         std::string getChanName(void) const;
         std::string getChanTopic(void) const;
+        std::string getChanKey(void) const;
         void        setChanName(std::string chanName);
         void        setChanTopic(std::string chanTopic);
+        void        setChanKey(std::string chanKey);
         int         addChanOp(std::string nname);       // returns 0 if MAX_CHANOPS has been reached
         int         addChanMember(std::string nname);
+        int         addChanMode(std::string chanMode);
         void        removeChanOp(std::string nname);
         void        removeChanMember(std::string nname);
+        void        removeChanMode(std::string chanMode);
         int         isChanOp(std::string nname);        // returns 1 if nname is inside _chanOps
         int         isChanMember(std::string name);
         void        emptyChan(void);                    // checks if the channel is empty once a user left
