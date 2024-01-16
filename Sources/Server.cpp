@@ -187,7 +187,6 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
     std::string tempPrivMsg(privMsg);
     std::string msgDest;
     int         destSocket;
-    int         flag = 0;
     std::string toSend = c.getNickName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {         // this is pretty self explanatory a tegridy check on dest needed to be executed
@@ -197,21 +196,33 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
             break;
         }
         if (i == MAXCLIENTS - 1) {                                                                                      // if a valid nick is not found, _channels is checked before returning ERR_NOSUCHNICK
-            for (int a = 0; a < MAXCHANS; a++) {
-                if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _channels[a].getChanName())) {
-                    flag = 1;
-                    std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
-                    for (int b = 0; b < MAX_CHANMEMBERS; b++) {
-                        int veryTempSocket = 0;
-                        if (_channels[a].isChanMember(_clients[b].getNickName())) veryTempSocket = _clients[b].getSocketFd();       // save the socket of every client connected to chan
-                        if (veryTempSocket) sendMessage(veryTempSocket, chanMsg);
-                    }
-                    break ;
+            for (int a = 0; a < MAXCHANS; a++) {                                                                        // this is done only if the client is a member of any chan
+                if (!_channels[a].isChanMember(c.getNickName())) {
+                    if (tempPrivMsg.substr(0, tempPrivMsg.find(' '))[0] == '&') return (ERR_NOSUCHCHANNEL);
+                    else return (ERR_NOSUCHNICK);
                 }
-                if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
+                else {
+                    if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _channels[a].getChanName())) {
+                        std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
+                        for (int b = 0; b < MAXCLIENTS; b++) {
+                            if (_channels[a].isChanMember(_clients[b].getNickName())) {
+                                int veryTempSocket = 0;
+                                veryTempSocket = _clients[b].getSocketFd();       // saves the socket of every client connected to chan
+                                if (_channels[a].isChanOp(c.getNickName())) {
+                                    std::string opChanMsg = "@" + chanMsg;
+                                    if (veryTempSocket) sendMessage(veryTempSocket, opChanMsg);
+                                }
+                                else if (!_channels[a].isChanOp(c.getNickName()) && _channels[a].isChanMember(c.getNickName())) {
+                                    if (veryTempSocket) sendMessage(veryTempSocket, chanMsg);
+                                }
+                            }
+                        }
+                        break ;
+                    }
+                }
+                if (a == MAXCHANS - 1) return (ERR_TOOMANYCHANNELS);
                 continue ;
             }            
-            if (!flag) return (ERR_NOSUCHNICK);
         }
     }
     return (MSG_OK);
@@ -255,15 +266,17 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     }
     else if (join[i] && join[i] == ' ' && (!join[i + 1] || (join[i + 1] && join[i + 1] == ' '))) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
-        if (a == MAXCHANS - 1) return (ERR_NOSUCHCHANNEL);
+        if (a == MAXCHANS - 1) return (ERR_TOOMANYCHANNELS);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
-            std::string tempJoinChanNotice = tempChanName + " channel was joined by " + c.getNickName();
-            char joinChanNotice[333];
-            int i = 0;
-            while (tempJoinChanNotice[i]) {joinChanNotice[i] = tempJoinChanNotice[i]; i++;}
-            joinChanNotice[i] = '\0';
-            handlePrivMsgCommand(c, joinChanNotice);
+            std::string joinChanNotice = tempChanName + " channel was joined by";                               // sending a join notice to every connected user
+            for (int u = 0; u < MAX_CHANMEMBERS; u++) {
+                if (_channels[a].isChanMember(_clients[u].getNickName())) {
+                    int ratherTempSocket = 0;
+                    ratherTempSocket = _clients[u].getSocketFd();
+                    if (ratherTempSocket) sendGoodMessage(ratherTempSocket, joinChanNotice, c.getNickName());
+                }
+            }
             _channels[a].addChanMember(c.getNickName());
             if (!_channels[a].getChanTopic()[0]) sendGoodMessage(c.getSocketFd(), RPL_NO_TOPIC, c.getNickName());        // tells the new chan member about the topic if there is one
             else {
@@ -272,10 +285,10 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
             }
             std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online channel members
             for (int k = 0; k < MAX_CHANMEMBERS; k++) {
-                if (!stringCompareTheReturn(_clients[k].getNickName(), c.getNickName())) break ;
                 if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
                 continue;
             }
+            onlineMembers.erase(onlineMembers.length());
             sendGoodMessage(c.getSocketFd(), onlineMembers, c.getNickName());
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}

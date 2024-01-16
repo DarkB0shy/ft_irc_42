@@ -35,6 +35,7 @@
 #define JOINZERO "you left every channel you ever joined"
 #define ERR_NOSUCHNICK "401"
 #define ERR_NOSUCHCHANNEL "403"
+#define ERR_CANNOTSENDTOCHAN "404"
 #define ERR_TOOMANYCHANNELS "405"
 #define ERR_NORECIPIENT "411"
 #define ERR_NOTEXTTOSEND "412"
