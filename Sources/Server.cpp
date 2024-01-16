@@ -103,6 +103,27 @@ void    Server::handleClientInput(Client &c) {
     if (valread == -1) std_errore(READERR);
     else if (valread == 0) {                                                                                    // valread returns 0 when the connection to the socket is lost
         std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
+        for (int x = 0; x < MAXCHANS; x++) {
+            if (_channels[x].isChanMember(c.getNickName())) {
+                _channels[x].removeChanMember(c.getNickName());
+                if (_channels[x].getChanName()[0]) {
+                    std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by " + c.getNickName();
+                    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+                        int quiteTempSocket = 0;
+                        if (_channels[x].isChanMember(_clients[i].getNickName())) quiteTempSocket = _clients[i].getSocketFd();
+                        if (quiteTempSocket) {
+                            if (_channels[x].isChanOp(c.getNickName())) {
+                                std::string opChanLeaveNotice = _channels[x].getChanName() + " channel was left by @" + c.getNickName();
+                                sendGoodMessage(quiteTempSocket, opChanLeaveNotice, c.getNickName());
+                            } else sendGoodMessage(quiteTempSocket, chanLeaveNotice, c.getNickName());
+                        }
+                    }
+                }
+                _channels[x].removeChanOp(c.getNickName());
+                _channels[x].emptyChan();
+            }
+            continue ;
+        }
         c.setSocketFd(0);
         return ;
     }
@@ -236,13 +257,20 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         for (int d = 0; d < MAXCHANS; d++) {
             if (_channels[d].isChanMember(c.getNickName())) {
                 _channels[d].removeChanMember(c.getNickName());
+                if (_channels[d].getChanName()[0]) {
+                    std::string chanLeaveNotice = _channels[d].getChanName() + " channel was left by " + c.getNickName();
+                    for (int aa = 0; aa < MAX_CHANMEMBERS; aa++) {
+                        int extremelyTempSocket = 0;
+                        if (_channels[d].isChanMember(_clients[aa].getNickName())) extremelyTempSocket = _clients[aa].getSocketFd();
+                        if (extremelyTempSocket) {
+                            if (_channels[d].isChanOp(c.getNickName())) {
+                                std::string opChanLeaveNotice = _channels[d].getChanName() + " channel was left by @" + c.getNickName();
+                                sendGoodMessage(extremelyTempSocket, opChanLeaveNotice, c.getNickName());
+                            } else sendGoodMessage(extremelyTempSocket, chanLeaveNotice, c.getNickName());
+                        }
+                    }
+                }
                 _channels[d].removeChanOp(c.getNickName());
-                std::string tempChanLeaveNotice = _channels[d].getChanName() + " channel was left by " + c.getNickName();
-                char chanLeaveNotice[333];
-                int i = 0;
-                while (tempChanLeaveNotice[i]) {chanLeaveNotice[i] = tempChanLeaveNotice[i]; i++;}
-                chanLeaveNotice[i] = '\0';
-                handlePrivMsgCommand(c, chanLeaveNotice);
                 _channels[d].emptyChan();                                   // if the channel is empty, it ceases to exist
             }
             continue ;
