@@ -107,13 +107,13 @@ void    Server::handleClientInput(Client &c) {
             if (_channels[x].isChanMember(c.getNickName())) {
                 _channels[x].removeChanMember(c.getNickName());
                 if (_channels[x].getChanName()[0]) {
-                    std::string chanLeaveNotice = _channels[x].getChanName() + "channel was left by";
-                    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+                    std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by";
+                    for (int i = 0; i < MAXCLIENTS; i++) {
                         int quiteTempSocket = 0;
                         if (_channels[x].isChanMember(_clients[i].getNickName())) quiteTempSocket = _clients[i].getSocketFd();
                         if (quiteTempSocket) {
                             if (_channels[x].isChanOp(c.getNickName())) {
-                                std::string opChanLeaveNotice = _channels[x].getChanName() + "channel was left by";
+                                std::string opChanLeaveNotice = _channels[x].getChanName() + " channel was left by";
                                 sendGoodMessage(quiteTempSocket, opChanLeaveNotice, "@"+ c.getNickName());
                             } else sendGoodMessage(quiteTempSocket, chanLeaveNotice, c.getNickName());
                         }
@@ -267,7 +267,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
                 _channels[d].emptyChan();                                   // if the channel is empty, it ceases to exist
                 if (_channels[d].getChanName()[0]) {
                     std::string chanLeaveNotice = _channels[d].getChanName() + " channel was left by";
-                    for (int aa = 0; aa < _channels[d].getChanSize(); aa++) {
+                    for (int aa = 0; aa < MAXCLIENTS; aa++) {
                         int extremelyTempSocket = 0;
                         if (_channels[d].isChanMember(_clients[aa].getNickName())) extremelyTempSocket = _clients[aa].getSocketFd();
                         if (extremelyTempSocket) {
@@ -322,7 +322,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
 
 void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
     std::string joinChanNotice = tempChanName + " channel was joined by";                               // sends a join notice to every connected user
-    for (int u = 0; u < _channels[a].getChanSize(); u++) {
+    for (int u = 0; u < MAXCLIENTS; u++) {
         if (_channels[a].isChanMember(_clients[u].getNickName())) {
             int ratherTempSocket = 0;
             ratherTempSocket = _clients[u].getSocketFd();
@@ -336,7 +336,7 @@ void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
         sendGoodMessage(c.getSocketFd(), rplTopic, c.getNickName());
     }
     std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online members
-    for (int k = 0; k < _channels[a].getChanSize(); k++) {
+    for (int k = 0; k < MAXCLIENTS; k++) {
         if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
         continue;
     }

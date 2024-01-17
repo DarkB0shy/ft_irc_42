@@ -94,7 +94,6 @@ void    Channel::emptyChan(void) {
     int i = 0;
     for (i = 0; i < _chanSize; i++) {
         if (!_chanMembers[i][0]) continue;
-        // else if (!stringCompareTheReturn(_chanMembers[i], "fullChanCheck")) {removeChanMember("fullChanCheck"); break ;}
         else return ;
     }
     for (int a = 0; a < _chanSize; a++) _chanMembers[i] = {'\0'};
@@ -104,10 +103,24 @@ void    Channel::emptyChan(void) {
 }
 
 int Channel::fullChan(void) {
+    if (_chanSize == 1) return (1);
     int i = 0;
-    while (_chanMembers[i][0]) i++;
-    if (i == _chanSize + 1) return (1);
-    else return (0);
+    int check = 0;
+    while (i < _chanSize) {
+        if (_chanMembers[i][0]) check++;
+        i++;
+    }
+    if (check == _chanSize) return (1);
+    return (0);
+    // if (_chanMembers[_chanSize - 1][0]) return (1);                             // cosi funziona piu o meno
+    // return (0);
+
+    // std::cout<<_chanMembers[_chanSize];
+
+    // if (!stringCompareTheReturn(_chanMembers[_chanSize], _chanTopic)) {          // per qualche motivo il topic del canale finisce dentro i chan members?
+    //     return (1);
+    // }
+    // return (0);
 }
 
 Channel::~Channel () {};
