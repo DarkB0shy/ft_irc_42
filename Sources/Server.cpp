@@ -61,7 +61,7 @@ void    Server::handleNewConnection(void) {
 
 void    Server::runServer(void) {
     resetSocketSet();
-	if (select(_maxFd + 1, &_readFds, NULL, NULL, NULL) == -1) std_errore(FDSETERROR);                                          // Waits for any I/O operation from the set of fds
+    if (select(_maxFd + 1, &_readFds, NULL, NULL, NULL) == -1) std_errore(FDSETERROR);                                          // Waits for any I/O operation from the set of fds
     if (FD_ISSET(this->getSocket(), &_readFds)) handleNewConnection();                                                          // Checks if the main socket is inside the set, if it is it means there is a new connection
     for (int i = 0; i < MAXCLIENTS; i++) if (FD_ISSET(_clients[i].getSocketFd(), &_readFds)) handleClientInput(_clients[i]);    // If one of the client fds is inside the set it means there is some I/O operation coming through
     for (int i = 0; i < MAXCLIENTS; i++) {                                                                                      // RPL_WELCOME
@@ -168,6 +168,7 @@ void    Server::handleClientInput(Client &c) {
             } else ;
             if (serverReply[0]) sendGoodMessage(c.getSocketFd(), serverReply, c.getNickName());
         } else ;
+        // delete newMssg;
     }
 }
 
@@ -296,6 +297,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     std::string tempJoin(join);
     std::string tempChanName = tempJoin.substr(0, tempJoin.find(' '));
     int a = chanExists(tempChanName);
+    if (a == -1) return (ERR_TOOMANYCHANNELS);
     if (join[i] && join[i] == ' ' && join[i + 1] && _channels[a].getChanKey()[0]) {                                             // if there is a character and the channel is valid (with an invitation key set) it means there is a channel password
         std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
         if (!tempChanKey[0]) return (ERR_PASSWDMISMATCH);
@@ -308,7 +310,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     else if (join[i] && join[i] == ' ' && (!join[i + 1] || join[i + 1])) return (ERR_ERRONEOUSCHANNAME);         // if there is a space but no characters it is an invalid channel name
     else {
         if (strlen(join) == _channels[a].getChanName().length() && _channels[a].getChanKey()[0]) return (ERR_PASSWDMISMATCH);                 // had to be handled
-        if (a == MAXCHANS - 1) return (ERR_TOOMANYCHANNELS);
+        if (a == MAXCHANS) return (ERR_TOOMANYCHANNELS);
         if (!stringCompareTheReturn(_channels[a].getChanName(), tempChanName)) {                // joining an existent channel
             if (_channels[a].isChanMember(c.getNickName())) return (ERR_ALREADYONCHAN);
             if (_channels[a].fullChan()) return (ERR_CHANNELLISFULL);
@@ -370,7 +372,7 @@ std::string Server::handleModeCommandOne(Client &c, char * mode) {
     int i = 0;
     i = checkModeSyntaxOne(mode);
     if (i == 1) return (ERR_NEEDMOREPARAMS);
-    if (i == 2) return (ERR_NOCHANMODES);
+    if (i == 2) return (ERR_UNKOWNMODE);
     if (i == 3) return (ERR_TOOMANYPARAMETERS);
     std::string tempChanMode(mode);
     for (int a = 0; a < MAXCHANS; a++) {
@@ -409,6 +411,7 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
             return ("channel key unset");
         } else return (ERR_PASSWDMISMATCH);
     }
+    else return (ERR_UNKOWNMODE);
     return ("channel mode applied");
 }
 

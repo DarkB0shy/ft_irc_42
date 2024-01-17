@@ -1,8 +1,8 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#define MAXCLIENTS 50
-#define MAXCHANS 6
+#define MAXCLIENTS 3
+#define MAXCHANS 2
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
 #define CLOSEDCONN "Connection closed from (ip, port): "
@@ -50,7 +50,7 @@
 #define ERR_PASSWDMISMATCH "464"
 #define ERR_KEYSET "467"
 #define ERR_CHANNELLISFULL "471"
-#define ERR_NOCHANMODES "477"
+#define ERR_UNKOWNMODE "472"
 #define ERR_CHANOPRIVSNEEDED "482"
 #define ERR_ERRONEOUSUSER "usernames can have up to 9 characters, and cannot have ' ' or '@'"
 #define ERR_ERRONEOUSCHANNAME "channel names can have up to 50 characters, must start with &, and cannot have ' ' or ','"
