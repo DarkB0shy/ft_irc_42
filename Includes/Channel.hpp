@@ -2,7 +2,7 @@
 #define CHANNEL_HPP
 
 #define MAX_CHANMODES 6
-#define MAX_CHANMEMBERS 2
+#define MAX_CHANMEMBERS 50
 #define MAX_CHANOPS 50
 
 #include <string>
@@ -15,7 +15,7 @@ class Channel {
         std::string _chanMembers[MAX_CHANMEMBERS];
         std::string _chanTopic;
         std::string _chanKey;
-        int         _chanSize = MAX_CHANMEMBERS;
+        int         _chanSize;
     public:
         std::string getChanName(void) const;
         std::string getChanTopic(void) const;

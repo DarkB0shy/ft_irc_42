@@ -1,7 +1,7 @@
 #include "../Includes/Channel.hpp"
 #include "../Includes/Utils.hpp"
 
-Channel::Channel (void) {};
+Channel::Channel (void) {_chanSize = 50;};
 
 Channel::Channel (const Channel &chan) {*this = chan;}
 

@@ -1,7 +1,7 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#define MAXCLIENTS 3
+#define MAXCLIENTS 4
 #define MAXCHANS 2
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
@@ -43,7 +43,6 @@
 #define ERR_NONICKNAMEGIVEN "431"
 #define ERR_ERRONEOUSNICKNAME "432"
 #define ERR_NICKNAMEINUSE "433"
-#define ERR_USERNOTINCHANNEL "441"
 #define ERR_NOTREGISTRED "451"
 #define ERR_NEEDMOREPARAMS "461"
 #define ERR_ALREADYREGISTERED "462"
@@ -106,6 +105,7 @@ class   Server {
         std::string handlePrivMsgCommand(Client &c, char *privMsg);
         std::string handleJoinCommand(Client &c, char * join);
         void        sendJoinNotice(int a, Client &c, std::string tempChanName);
+        void        sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c);
         int         chanExists(std::string chanName);
         int         getNewChanIndex(void);
         void        createChan(std::string chanName, std::string chanFounder, int a);

@@ -154,13 +154,16 @@ void    Server::handleClientInput(Client &c) {
                 else if (!stringCompare(newMssg->getCommand(), "privmsg")) {                                        // privmsg command
                     serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
                 }
-                else if (!stringCompare(newMssg->getCommand(), "join")) {
+                else if (!stringCompare(newMssg->getCommand(), "join")) {                                               // join command
                     serverReply = handleJoinCommand(c, newMssg->getParameters());
                 }
-                else if (!stringCompare(newMssg->getCommand(), "mode")) {
+                else if (!stringCompare(newMssg->getCommand(), "mode")) {                                       // mode command (only for chops)
                     serverReply = handleModeCommandOne(c, newMssg->getParameters());
                     if (!stringCompareTheReturn("CHAN OP", serverReply)) {
                         serverReply = handleModeCommandTwo(c, newMssg->getParameters());
+                        std::string tempChoppa(newMssg->getParameters());
+                        sendOpNotice(tempChoppa, serverReply, c);
+                        return ;
                     }
                 }
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
@@ -169,6 +172,25 @@ void    Server::handleClientInput(Client &c) {
             if (serverReply[0]) sendGoodMessage(c.getSocketFd(), serverReply, c.getNickName());
         } else ;
         // delete newMssg;
+    }
+}
+
+void    Server::sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c) {
+    for (int aaa = 0; aaa < MAXCHANS; aaa++) {                                              // chop notice
+        if (_channels[aaa].getChanName()[0]) {
+            if (!stringCompareTheReturn(_channels[aaa].getChanName(), tempChoppa.substr(0, tempChoppa.find(' ')))) {
+                for (int cioppa = 0; cioppa < MAXCLIENTS; cioppa++) {
+                    if (_clients[cioppa].getNickName()[0] && _channels[aaa].isChanOp(_clients[cioppa].getNickName())) {
+                        // if (stringCompareTheReturn(_clients[cioppa].getNickName(), c.getNickName())) {
+                            sendGoodMessage(_clients[cioppa].getSocketFd(), serverReply, _clients[cioppa].getNickName());
+                        // }
+                        // else ;
+                    }
+                    continue ;
+                }
+            }
+        }
+        continue ;
     }
 }
 
@@ -364,6 +386,7 @@ void    Server::createChan(std::string chanName, std::string chanFounder, int a)
     _channels[a].addChanOp(chanFounder);
     _channels[a].addChanMember(chanFounder);
     if (a % 2 == 0) _channels[a].setChanTopic("Fuffa");
+    if (a % 2 == 0) _channels[a].setChanSize(2);
     // if (a % 2 == 0) _channels[a].setChanKey("pass");
 }
 
@@ -376,8 +399,10 @@ std::string Server::handleModeCommandOne(Client &c, char * mode) {
     if (i == 3) return (ERR_TOOMANYPARAMETERS);
     std::string tempChanMode(mode);
     for (int a = 0; a < MAXCHANS; a++) {
-        if (_channels[chanExists(tempChanMode.substr(0, tempChanMode.find(' ')))].getChanName()[0]) {
-            if (_channels[a].isChanMember(c.getNickName()) && _channels[a].isChanOp(c.getNickName())) return ("CHAN OP");
+        if (_channels[a].getChanName()[0]) {
+            if (!stringCompareTheReturn(tempChanMode.substr(0, tempChanMode.find(' ')), _channels[a].getChanName())) {
+                if (_channels[a].isChanMember(c.getNickName()) && _channels[a].isChanOp(c.getNickName())) return ("CHAN OP");
+            }
         }
         continue ;
     }
@@ -398,21 +423,66 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
     if (mode[i] == '+' && mode[i + 1] == 'k') {         // +k mode, sets the channel key
         if (_channels[a].getChanKey()[0]) return (ERR_KEYSET);
         if (i == strlen(mode)) return (ERR_NEEDMOREPARAMS);
-        _channels[a].addChanMode("+k");
+        // _channels[a].addChanMode("+k");
         _channels[a].setChanKey(tempChanMode.substr(i + 3, tempChanMode.length()));
+        return ("channel key set to " + tempChanMode.substr(i + 3, tempChanMode.length()));
     }
     else if (mode[i] == '-' && mode[i + 1] == 'k') {    // -k removes the channel key (if there is one and is given)
         if (!_channels[a].getChanKey()[0]) return ("channel key is not set");
         if (i == strlen(mode)) return (ERR_NEEDMOREPARAMS);
         if (!stringCompareTheReturn(tempChanMode.substr(i + 3, tempChanMode.length()), _channels[a].getChanKey())) {
-            _channels[a].removeChanMode("+k");
-            _channels[a].addChanMode("-k");
+            // _channels[a].removeChanMode("+k");
+            // _channels[a].addChanMode("-k");
             _channels[a].setChanKey({'\0'});
             return ("channel key unset");
         } else return (ERR_PASSWDMISMATCH);
     }
-    else return (ERR_UNKOWNMODE);
-    return ("channel mode applied");
+    else if (mode[i] == '+' && mode[i + 1] == 'o') {    // +o gives chanOp privileges to the users given (if they are inside the channel)
+        tempChanMode.erase(0, tempChanMode.substr(0, tempChanMode.find(' ')).length());
+        tempChanMode.erase(0, 4);
+        int j = 0;
+        int xxx = 0;
+        while (xxx < 3) {
+            std::string temp = tempChanMode.substr(0, tempChanMode.find(' '));                // trova il 1o client
+            if (!temp[0]) break; 
+            for (j = 0; j < MAXCLIENTS; j++) {
+                if (_channels[a].isChanMember(_clients[j].getNickName())) {
+                    if (!stringCompareTheReturn(temp, _clients[j].getNickName())) {
+                        _channels[a].addChanOp(_clients[j].getNickName());
+                        sendGoodMessage(_clients[j].getSocketFd(), "you are now chop of chan " + _channels[a].getChanName(), _clients[j].getNickName());
+                    }
+                    continue ;
+                }
+            }
+            tempChanMode.erase(0, temp.length() + 1);
+            xxx++;
+        }
+        return ("if a valid channel member was given, he/she is now chop");
+    }
+    else if (mode[i] == '-' && mode[i + 1] == 'o') {     // -o revokes chop privileges
+        tempChanMode.erase(0, tempChanMode.substr(0, tempChanMode.find(' ')).length());
+        tempChanMode.erase(0, 4);
+        int j = 0;
+        int xxx = 0;
+        while (xxx < 3) {
+            std::string temp = tempChanMode.substr(0, tempChanMode.find(' '));
+            if (!temp[0]) break;
+            for (j = 0; j < MAXCLIENTS; j++) {
+                if (_channels[a].isChanMember(_clients[j].getNickName())) {
+                    if (!stringCompareTheReturn(temp, _clients[j].getNickName())) {
+                        _channels[a].removeChanOp(_clients[j].getNickName());
+                        sendGoodMessage(_clients[j].getSocketFd(), "you are no longer chop of chan " +_channels[a].getChanName(), _clients[j].getNickName());
+                    }
+                    continue ;
+                }
+            }
+            tempChanMode.erase(0, temp.length() + 1);
+            xxx++;
+        }
+        return ("if a valid channel member was given, he/she is no longer chop");
+    }
+    // else return (ERR_UNKOWNMODE);
+    return (ERR_UNKOWNMODE);
 }
 
 Server::~Server (void) {}
