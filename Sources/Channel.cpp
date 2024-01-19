@@ -116,9 +116,17 @@ void    Channel::addNnameToInviteList(std::string nname) {
 
 void    Channel::removeNnameFromInviteList(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
-        if (!stringCompareTheReturn(nname, _inviteList)) {_inviteList[i].clear(); return ;}
+        if (!stringCompareTheReturn(nname, _inviteList[i])) {_inviteList[i].clear(); return ;}
         continue ;
     }
+}
+
+int Channel::isAlreadyInvited(std::string nname) {
+    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+        if (!stringCompareTheReturn(nname, _inviteList[i])) return (1);
+        continue;
+    }
+    return (0);
 }
 
 Channel::~Channel () {};

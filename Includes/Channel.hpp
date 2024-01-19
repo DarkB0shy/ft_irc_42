@@ -40,6 +40,7 @@ class Channel {
         int         fullChan(void);
         void        addNnameToInviteList(std::string nname);
         void        removeNnameFromInviteList(std::string nname);
+        int         isAlreadyInvited(std::string nname);
         Channel(void);
         Channel(const Channel &chan);
         Channel &operator=(const Channel &chan);

@@ -43,7 +43,9 @@
 #define ERR_NONICKNAMEGIVEN "431"
 #define ERR_ERRONEOUSNICKNAME "432"
 #define ERR_NICKNAMEINUSE "433"
+#define ERR_USERNOTINCHANNEL "441"
 #define ERR_NOTONCHANNEL "442"
+#define ERR_USERONCHANNEL "443"
 #define ERR_NOTREGISTRED "451"
 #define ERR_NEEDMOREPARAMS "461"
 #define ERR_ALREADYREGISTERED "462"
@@ -113,6 +115,8 @@ class   Server {
         std::string handleModeCommandOne(Client &c, char * mode);
         std::string handleModeCommandTwo(Client &c, char * mode);
         std::string handleTopicCommand(Client &c, char * topic);
+        std::string handleInviteCommand(Client &c, char * invite);
+        std::string handleKickCommand(Client &c, char * nick);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);
