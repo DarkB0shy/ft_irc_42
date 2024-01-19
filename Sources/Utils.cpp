@@ -98,7 +98,11 @@ int checkModeSyntaxOne(char * mode) {
                 if (mode[i + 1]) return (3);       // ERR_TOOMANYPARAMETERS
             }
             else if (mode[i] == 'l') {
-                if (mode[i + 1] && mode[i + 1] == ' ' && mode[i + 2] && isDigit(mode[i + 2])) {
+                if (mode[i - 1] == '-') {
+                    if (mode[i + 1]) return (3);
+                    else return (0);
+                }
+                else if (mode[i + 1] && mode[i + 1] == ' ' && mode[i + 2] && isDigit(mode[i + 2])) {
                     i = i + 2;
                     while (mode[i]) {
                         if (!isDigit(mode[i])) return (3); // ERR_TOOMANYPARAMETERS

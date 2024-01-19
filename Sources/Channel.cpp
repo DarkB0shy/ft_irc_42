@@ -1,7 +1,7 @@
 #include "../Includes/Channel.hpp"
 #include "../Includes/Utils.hpp"
 
-Channel::Channel (void) {_chanSize = 50;};
+Channel::Channel (void) {_chanSize = 50; _inviteOnly = 0; _topicOpOnly = 1;};
 
 Channel::Channel (const Channel &chan) {*this = chan;}
 
@@ -19,6 +19,10 @@ std::string Channel::getChanKey(void) const {return _chanKey;}
 
 int Channel::getChanSize(void) const {return _chanSize;}
 
+int Channel::getInviteOnly(void) const {return _inviteOnly;}
+
+int Channel::getTopicOpOnly(void) const {return _topicOpOnly;}
+
 void    Channel::setChanName(std::string chanName) {_chanName = chanName;}
 
 void    Channel::setChanTopic(std::string chanTopic) {_chanTopic = chanTopic;}
@@ -26,6 +30,10 @@ void    Channel::setChanTopic(std::string chanTopic) {_chanTopic = chanTopic;}
 void    Channel::setChanKey(std::string chanKey) {_chanKey = chanKey;}
 
 void    Channel::setChanSize(int chanSize) {_chanSize = chanSize;}
+
+void    Channel::setInviteOnly(int iOnly) {_inviteOnly = iOnly;}
+
+void    Channel::setTopicOpOnly(int tOnly) {_topicOpOnly = tOnly;}
 
 int Channel::isChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
@@ -60,15 +68,6 @@ int Channel::addChanMember(std::string nname) {
     return (i);        // chanmembers limit reached
 }
 
-
-int Channel::addChanMode(std::string chanMode) {
-    for (int i = 0; i < MAX_CHANMODES; i++) {
-        if (!_chanModes[i][0]) {_chanModes[i] = chanMode; return (i);}
-        continue;
-    }
-    return (-1);
-}
-
 void    Channel::removeChanOp(std::string nname) {
     for (int i = 0; i < MAX_CHANOPS; i++) {
         if (!stringCompareTheReturn(nname, _chanOps[i])) {_chanOps[i] = {'\0'}; return ;}
@@ -83,20 +82,14 @@ void    Channel::removeChanMember(std::string nname) {
     }
 }
 
-void    Channel::removeChanMode(std::string chanMode) {
-    for (int i = 0; i < MAX_CHANMODES; i++) {
-        if (!stringCompareTheReturn(chanMode, _chanModes[i])) {_chanModes[i] = {'\0'}; return ;}
-        continue ;
-    }
-}
-
 void    Channel::emptyChan(void) {
     int i = 0;
     for (i = 0; i < _chanSize; i++) {
         if (!_chanMembers[i][0]) continue;
         else return ;
     }
-    for (int a = 0; a < _chanSize; a++) _chanMembers[i] = {'\0'};
+    for (int a = 0; a < MAX_CHANMEMBERS; a++) _chanMembers[a] = {'\0'};
+    for (int a = 0; a < MAX_CHANMEMBERS; a++) _inviteList[a] = {'\0'};
     _chanName = {'\0'};
     _chanTopic = {'\0'};
     _chanKey = {'\0'};
@@ -112,15 +105,20 @@ int Channel::fullChan(void) {
     }
     if (check == _chanSize) return (1);
     return (0);
-    // if (_chanMembers[_chanSize - 1][0]) return (1);                             // cosi funziona piu o meno
-    // return (0);
+}
 
-    // std::cout<<_chanMembers[_chanSize];
+void    Channel::addNnameToInviteList(std::string nname) {
+    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+        if (!_inviteList[i][0]) _inviteList[i] = nname;
+        continue ;
+    }
+}
 
-    // if (!stringCompareTheReturn(_chanMembers[_chanSize], _chanTopic)) {          // per qualche motivo il topic del canale finisce dentro i chan members?
-    //     return (1);
-    // }
-    // return (0);
+void    Channel::removeNnameFromInviteList(std::string nname) {
+    for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+        if (!stringCompareTheReturn(nname, _inviteList)) {_inviteList[i].clear(); return ;}
+        continue ;
+    }
 }
 
 Channel::~Channel () {};

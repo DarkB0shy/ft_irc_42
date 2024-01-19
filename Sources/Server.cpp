@@ -166,6 +166,9 @@ void    Server::handleClientInput(Client &c) {
                         return ;
                     }
                 }
+                else if (!stringCompare(newMssg->getCommand(), "topic")) {                                        // topic command
+                    serverReply = handleTopicCommand(c, newMssg->getParameters());
+                }
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
                 else ;
             } else ;
@@ -181,10 +184,7 @@ void    Server::sendOpNotice(std::string tempChoppa, std::string serverReply, Cl
             if (!stringCompareTheReturn(_channels[aaa].getChanName(), tempChoppa.substr(0, tempChoppa.find(' ')))) {
                 for (int cioppa = 0; cioppa < MAXCLIENTS; cioppa++) {
                     if (_clients[cioppa].getNickName()[0] && _channels[aaa].isChanOp(_clients[cioppa].getNickName())) {
-                        // if (stringCompareTheReturn(_clients[cioppa].getNickName(), c.getNickName())) {
                             sendGoodMessage(_clients[cioppa].getSocketFd(), serverReply, _clients[cioppa].getNickName());
-                        // }
-                        // else ;
                     }
                     continue ;
                 }
@@ -319,6 +319,7 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
     std::string tempJoin(join);
     std::string tempChanName = tempJoin.substr(0, tempJoin.find(' '));
     int a = chanExists(tempChanName);
+    if (_channels[a].getInviteOnly()) return ("channel is invite only");
     if (a == -1) return (ERR_TOOMANYCHANNELS);
     if (join[i] && join[i] == ' ' && join[i + 1] && _channels[a].getChanKey()[0]) {                                             // if there is a character and the channel is valid (with an invitation key set) it means there is a channel password
         std::string tempChanKey = tempJoin.substr(i + 1, tempJoin.length());
@@ -386,8 +387,6 @@ void    Server::createChan(std::string chanName, std::string chanFounder, int a)
     _channels[a].addChanOp(chanFounder);
     _channels[a].addChanMember(chanFounder);
     if (a % 2 == 0) _channels[a].setChanTopic("Fuffa");
-    if (a % 2 == 0) _channels[a].setChanSize(2);
-    // if (a % 2 == 0) _channels[a].setChanKey("pass");
 }
 
 std::string Server::handleModeCommandOne(Client &c, char * mode) {
@@ -441,14 +440,16 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
         tempChanMode.erase(0, tempChanMode.substr(0, tempChanMode.find(' ')).length());
         tempChanMode.erase(0, 4);
         int j = 0;
-        int xxx = 0;
+        int xxx = 0;                        // needed for the loop
+        std::string goodModeOReply = "the following users are now chops of chan " + _channels[a].getChanName() + ": ";
         while (xxx < 3) {
-            std::string temp = tempChanMode.substr(0, tempChanMode.find(' '));                // trova il 1o client
+            std::string temp = tempChanMode.substr(0, tempChanMode.find(' '));                // finds the 1st client
             if (!temp[0]) break; 
             for (j = 0; j < MAXCLIENTS; j++) {
                 if (_channels[a].isChanMember(_clients[j].getNickName())) {
                     if (!stringCompareTheReturn(temp, _clients[j].getNickName())) {
                         _channels[a].addChanOp(_clients[j].getNickName());
+                        goodModeOReply = goodModeOReply + _clients[j].getNickName() + ", ";
                         sendGoodMessage(_clients[j].getSocketFd(), "you are now chop of chan " + _channels[a].getChanName(), _clients[j].getNickName());
                     }
                     continue ;
@@ -457,13 +458,15 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
             tempChanMode.erase(0, temp.length() + 1);
             xxx++;
         }
-        return ("if a valid channel member was given, he/she is now chop");
+        goodModeOReply.erase(goodModeOReply.length() - 2, goodModeOReply.length());
+        return (goodModeOReply);
     }
     else if (mode[i] == '-' && mode[i + 1] == 'o') {     // -o revokes chop privileges
         tempChanMode.erase(0, tempChanMode.substr(0, tempChanMode.find(' ')).length());
         tempChanMode.erase(0, 4);
         int j = 0;
         int xxx = 0;
+        std::string goodModeOReply = "the following users are no longer chops of chan " + _channels[a].getChanName() + ": ";
         while (xxx < 3) {
             std::string temp = tempChanMode.substr(0, tempChanMode.find(' '));
             if (!temp[0]) break;
@@ -471,6 +474,7 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
                 if (_channels[a].isChanMember(_clients[j].getNickName())) {
                     if (!stringCompareTheReturn(temp, _clients[j].getNickName())) {
                         _channels[a].removeChanOp(_clients[j].getNickName());
+                        goodModeOReply = goodModeOReply + _clients[j].getNickName() + ", ";
                         sendGoodMessage(_clients[j].getSocketFd(), "you are no longer chop of chan " +_channels[a].getChanName(), _clients[j].getNickName());
                     }
                     continue ;
@@ -479,10 +483,64 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
             tempChanMode.erase(0, temp.length() + 1);
             xxx++;
         }
-        return ("if a valid channel member was given, he/she is no longer chop");
+        goodModeOReply.erase(goodModeOReply.length() - 2, goodModeOReply.length());
+        return (goodModeOReply);
     }
-    // else return (ERR_UNKOWNMODE);
+    else if (mode[i] == '+' && mode[i + 1] == 'l') {                                        // +l sets channel limit to the number given
+        tempChanMode.erase(0, tempChanMode.substr(0, tempChanMode.find(' ')).length());
+        tempChanMode.erase(0, 4);
+        int i = 0;
+        int temp = 0;
+        temp = parseInt(tempChanMode);
+        if (temp == 0) return ("whoever picked this nickname is an unforgivable bored fool ->");
+        if (temp == -1) return ("+l mode takes only a number as parameter");
+        if (temp > 50) return ("maximum chan size is 50");
+        _channels[a].setChanSize(temp);
+        return ("channel: " + _channels[a].getChanName() + " members limit was set to " + tempChanMode);
+    }
+    else if (mode[i] == '-' && mode[i + 1] == 'l') {                                    // -l unsets the channel limit
+        _channels[a].setChanSize(50);
+        return ("channel: " + _channels[a].getChanName() + " members limit was unset");
+    }
+    else if (mode[i] == '+' && mode[i + 1] == 't') {                                    // +t sets the topic command accessible to anyone
+        _channels[a].setTopicOpOnly(1);
+        return ("channel: " + _channels[a].getChanName() + " topic command is now reserved to chops");
+    }
+    else if (mode[i] == '-' && mode[i + 1] == 't') {                                    // -t sets the topic command accessible to all chan members
+        _channels[a].setTopicOpOnly(0);
+        return ("channel: " + _channels[a].getChanName() + " topic command is now available to all chan members");
+    }
+    else if (mode[i] == '+' && mode[i + 1] == 'i') {                                    // +i sets the channel to invite only
+        _channels[a].setInviteOnly(1);
+        return ("channel: " + _channels[a].getChanName() + " is now invite-only");
+    }
+    else if (mode[i == '-' && mode[i + 1] == 'i']) {                                    // -i sets the channel open
+        _channels[a].setInviteOnly(0);
+        return ("channel: " + _channels[a].getChanName() + " is no longer invite-only");
+    }
     return (ERR_UNKOWNMODE);
+}
+
+std::string Server::handleTopicCommand(Client &c, char * topic) {
+    std::string tempChanTopic(topic);
+    int a = 0;
+    a = chanExists(tempChanTopic.substr(0, tempChanTopic.find(' ')));
+    if (!_channels[a].isChanMember(c.getNickName())) return (ERR_NOTONCHANNEL);
+    if (_channels[a].getTopicOpOnly() && !_channels[a].isChanOp(c.getNickName())) return (ERR_CHANOPRIVSNEEDED);
+    tempChanTopic.erase(0, tempChanTopic.find(' '));
+    tempChanTopic.erase(tempChanTopic.length());
+    if (!tempChanTopic[0]) return ("topic of chan " + _channels[a].getChanName() + " is " + _channels[a].getChanTopic());
+    int i = 0;
+    while (tempChanTopic[i] == ' ') i++;
+    if (i == tempChanTopic.size()) {
+        _channels[a].setChanTopic(RPL_NO_TOPIC);
+        return ("topic of chan " + _channels[a].getChanName() + " unset");
+    }
+    else {
+        tempChanTopic.erase(0, 1);
+        _channels[a].setChanTopic(tempChanTopic);
+    }
+    return ("topic of chan " + _channels[a].getChanName() + " set to " + _channels[a].getChanTopic());
 }
 
 Server::~Server (void) {}

@@ -1,13 +1,12 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#define MAXCLIENTS 4
+#define MAXCLIENTS 10
 #define MAXCHANS 2
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
 #define CLOSEDCONN "Connection closed from (ip, port): "
 #define BUFFASIZE 1025
-
 #define WRONGARGS "usage: ./ircserv #port connection_psswd"
 #define WRONGPORT "the #port is invalid"
 #define WRONGPASS "invalid password"
@@ -19,14 +18,15 @@
 #define NEWCONNERR "could not establish new connection"
 #define OUTERR "could not send message"
 #define READERR "could not read message"
+
 #define PSSWD_OK "password correct"
 #define NNAME_OK "nickname set"
 #define UNAME_OK "username set"
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
 #define RPL_CREATED "this server was created on new year's eve"
-#define RPL_MYINFO "<ircserv> <version 0> <available user modes: join, nick, privmsg, topic (if allowed by chan ops)> <available channel modes (only for chan ops): invite, kick, mode (i, t, k, o, l), topic>"
-#define RPL_NO_TOPIC "the channel does not have a topic set yet"
+#define RPL_MYINFO "<ircserv> <version 0> <available user modes: invite, join, nick, privmsg, topic (if allowed by chan ops)> <available channel modes (only for chan ops): kick, mode (i, t, k, o, l), topic>"
+#define RPL_NO_TOPIC "no topic set yet"
 #define RPL_TOPIC "the topic of the channel is "
 #define RPL_NAMEREPLY "currently online members of the channel: "
 #define MSG_OK "message sent"
@@ -43,6 +43,7 @@
 #define ERR_NONICKNAMEGIVEN "431"
 #define ERR_ERRONEOUSNICKNAME "432"
 #define ERR_NICKNAMEINUSE "433"
+#define ERR_NOTONCHANNEL "442"
 #define ERR_NOTREGISTRED "451"
 #define ERR_NEEDMOREPARAMS "461"
 #define ERR_ALREADYREGISTERED "462"
@@ -54,7 +55,7 @@
 #define ERR_ERRONEOUSUSER "usernames can have up to 9 characters, and cannot have ' ' or '@'"
 #define ERR_ERRONEOUSCHANNAME "channel names can have up to 50 characters, must start with &, and cannot have ' ' or ','"
 #define ERR_ALREADYONCHAN "you have already joined the channel"
-#define ERR_TOOMANYPARAMETERS "mode takes a maximum of 3 arguments per parameter"
+#define ERR_TOOMANYPARAMETERS "mode takes a maximum of 3 parameters, -l, +i, -i, +t, -t take no arguments instead"
 #define ERR_INVALIDCHANAME "you are not a member of that channel"
 
 #include "Client.hpp"
@@ -111,6 +112,7 @@ class   Server {
         void        createChan(std::string chanName, std::string chanFounder, int a);
         std::string handleModeCommandOne(Client &c, char * mode);
         std::string handleModeCommandTwo(Client &c, char * mode);
+        std::string handleTopicCommand(Client &c, char * topic);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);
