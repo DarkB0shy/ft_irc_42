@@ -4,15 +4,15 @@
 #include <iostream>
 #include <cstring>
 
-void	handleSigInt(int signal);
-void    std_errore(const char *err);
-int     parseInt(std::string str);
-int     isAlpha(char c);
-int	    checkMssgSyntax(std::string msg);
-int	    stringCompare(char * first, std::string second);
-int     stringCompareTheReturn(std::string first, std::string second);
-int     isDigit(char c);
 int     checkModeSyntaxOne(char * mode);
 int     checkModeSyntaxTwo(char * mode, int *i);
+int	    checkMssgSyntax(std::string msg);
+void	handleSigInt(int signal);
+int     isAlpha(char c);
+int     isDigit(char c);
+int     parseInt(std::string str);
+void    std_errore(const char *err);
+int	    stringCompare(char * first, std::string second);
+int     stringCompareTheReturn(std::string first, std::string second);
 
 #endif

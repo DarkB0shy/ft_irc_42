@@ -10,14 +10,13 @@ Message &Message::operator=(const Message &m) {
     *this = Message(m);
     return (*this);
 }
-
-char*   Message::getPrefix(void) {return _prefix;}
-
 char*   Message::getCommand(void) {return _command;}
 
 char*   Message::getParameters(void) {return _parameters;}
 
-Message*    Message::splittedMssg(std::string mssg) {                        // &mssg[n], n is the starting point of mssg and is also a char *
+char*   Message::getPrefix(void) {return _prefix;}
+
+Message*    Message::splittedMssg(std::string mssg) {                           // &mssg[n], n is the starting point of mssg and is also a char *
     if (checkMssgSyntax(mssg)) return NULL;
     Message *tmpmssg;
     tmpmssg = new Message();
@@ -63,13 +62,3 @@ Message*    Message::splittedMssg(std::string mssg) {                        // 
 }
 
 Message::~Message(void) {}
-
-// int main (int argc, char **argv) {
-//     char buffa[1025] = "user fred";
-//     std::string n = "gio";
-//     Message *newMssg;
-//     newMssg = newMssg->splittedMssg(buffa);
-//     std::cout<<newMssg->getParameters();
-//     std::cout<<"del";
-//     return(0);
-// }

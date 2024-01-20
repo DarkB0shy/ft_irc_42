@@ -25,7 +25,7 @@
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
 #define RPL_CREATED "this server was created on new year's eve"
-#define RPL_MYINFO "<ircserv> <version 0> <available user modes: invite, join, nick, privmsg, topic (if allowed by chan ops)> <available channel modes (only for chan ops): kick, mode (i, t, k, o, l), topic>"
+#define RPL_MYINFO "<ircserv> <version 0> <available user modes: join, nick, privmsg, topic (if allowed by chan ops)> <available channel modes (only for chan ops): invite, kick, mode (i, t, k, o, l), topic>"
 #define RPL_NO_TOPIC "no topic set yet"
 #define RPL_TOPIC "the topic of the channel is "
 #define RPL_NAMEREPLY "currently online members of the channel: "
@@ -60,67 +60,67 @@
 #define ERR_TOOMANYPARAMETERS "mode takes a maximum of 3 parameters, -l, +i, -i, +t, -t take no arguments instead"
 #define ERR_INVALIDCHANAME "you are not a member of that channel"
 
+#include "Channel.hpp"
 #include "Client.hpp"
 #include "Utils.hpp"
 #include "Message.hpp"
-#include "Channel.hpp"
-#include <fcntl.h>
-#include <unistd.h>
-#include <netinet/in.h>		// holds the struct sockaddr_in
-#include <arpa/inet.h>      // inetitoa, ntohs, ...
+#include <arpa/inet.h>                          // inetitoa, ntohs, ...
 #include <csignal>
-#include <sys/select.h>     // FD_ZERO, ...
+#include <fcntl.h>
+#include <netinet/in.h>		                    // holds the struct sockaddr_in
+#include <sys/select.h>                         // FD_ZERO, ...
+#include <unistd.h>
 
 typedef struct	s_socket {
+	struct sockaddr_in	address;
+	int					addrlen;
+	int					fd;
 	int					port;
 	int					socket;
-	int					fd;
-	int					addrlen;
-	struct sockaddr_in	address;
 }				t_socket;
 
 class   Server {
     private:
-        int                             _portNumber;
         int                             _addrlen;
-        int                             _socket;
-        int                             _maxFd;
         struct  sockaddr_in             _address;
-        fd_set                          _readFds;
-        std::string                     _hostname;
-        std::string                     _pass;
-        Client                          _clients[MAXCLIENTS];
         Channel                         _channels[MAXCHANS];
+        Client                          _clients[MAXCLIENTS];
+        std::string                     _hostname;
+        int                             _maxFd;
+        std::string                     _pass;
+        int                             _portNumber;
+        fd_set                          _readFds;
+        int                             _socket;
     public:
-        void        sendMessage(int sfd, const std::string &message);
-        void        sendGoodMessage(int sfd, std::string sReply, std::string nname);
-        void        startServer(void);
-        void        clearSocketsSet(void);
-        void        resetSocketSet(void);
-        void        runServer(void);
-        int         getSocket(void) const;
-		void        initClients(void);
-        void        handleNewConnection(void);
-        void        handleClientInput(Client &c);
-        std::string handlePassCommand(Client &c, char * pass);
-        std::string handleNickCommand(Client &c, char * nick);
-        std::string handleUserCommand(Client &c, char * user);
-        std::string handlePrivMsgCommand(Client &c, char *privMsg);
-        std::string handleJoinCommand(Client &c, char * join);
-        void        sendJoinNotice(int a, Client &c, std::string tempChanName);
-        void        sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c);
-        int         chanExists(std::string chanName);
-        int         getNewChanIndex(void);
-        void        createChan(std::string chanName, std::string chanFounder, int a);
-        std::string handleModeCommandOne(Client &c, char * mode);
-        std::string handleModeCommandTwo(Client &c, char * mode);
-        std::string handleTopicCommand(Client &c, char * topic);
-        std::string handleInviteCommand(Client &c, char * invite);
-        std::string handleKickCommand(Client &c, char * nick);
         Server(void);
         Server(int portNumber, std::string pass);
         Server(const Server &s);
         Server &operator=(const Server &s);
+        int         chanExists(std::string chanName);
+        void        clearSocketsSet(void);
+        void        createChan(std::string chanName, std::string chanFounder, int a);
+        int         getNewChanIndex(void);
+        int         getSocket(void) const;
+        void        handleClientInput(Client &c);
+        std::string handleInviteCommand(Client &c, char * invite);
+        std::string handleJoinCommand(Client &c, char * join);
+        std::string handleKickCommand(Client &c, char * nick);
+        std::string handleModeCommandOne(Client &c, char * mode);
+        std::string handleModeCommandTwo(Client &c, char * mode);
+        void        handleNewConnection(void);
+        std::string handleNickCommand(Client &c, char * nick);
+        std::string handlePassCommand(Client &c, char * pass);
+        std::string handlePrivMsgCommand(Client &c, char *privMsg);
+        std::string handleTopicCommand(Client &c, char * topic);
+        std::string handleUserCommand(Client &c, char * user);
+		void        initClients(void);
+        void        resetSocketSet(void);
+        void        runServer(void);
+        void        sendGoodMessage(int sfd, std::string sReply, std::string nname);
+        void        sendJoinNotice(int a, Client &c, std::string tempChanName);
+        void        sendMessage(int sfd, const std::string &message);
+        void        sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c);
+        void        startServer(void);
         ~Server();
 };
 

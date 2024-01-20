@@ -179,7 +179,7 @@ void    Server::handleClientInput(Client &c) {
             } else ;
             if (serverReply[0]) sendGoodMessage(c.getSocketFd(), serverReply, c.getNickName());
         } else ;
-        // delete newMssg;
+        delete newMssg;
     }
 }
 

@@ -6,17 +6,17 @@
 
 class Message {
     private:
-        char _prefix[15];
         char _command[15];
         char _parameters[482];
+        char _prefix[15];
     public:
-        char*       getPrefix(void);
-        char*       getCommand(void);
-        char*       getParameters(void);
-        Message*    splittedMssg(std::string mssg);
         Message(void);
         Message(const Message &m);
         Message &operator=(const Message &m);
+        char*       getCommand(void);                   // get methods
+        char*       getParameters(void);
+        char*       getPrefix(void);
+        Message*    splittedMssg(std::string mssg);     // splits std::string mssg into prefix, command and parameters (char *)
         ~Message();
 };
 
