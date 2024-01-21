@@ -124,6 +124,7 @@ void    Server::handleClientInput(Client &c) {
             continue ;
         }
         c.setNickName({'\0'});
+        c.setUserName({'\0'});
         c.setSocketFd(0);
         return ;
     }
@@ -346,12 +347,11 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
         }
         else {createChan(tempChanName, c.getNickName(), a); return(CHAN_CREATED);}
     }
-    // sendJoinNotice(a, c, tempChanName);
     return (CHAN_JOINED);
 }
 
 void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
-    if (_channels[a].isAlreadyInvited(c.getNickName())) _channels[a].removeNnameFromInviteList(c.getNickName());
+        _channels[a].removeNnameFromInviteList(c.getNickName());
     std::string joinChanNotice = tempChanName + " channel was joined by";                               // sends a join notice to every connected user
     for (int u = 0; u < MAXCLIENTS; u++) {
         if (_channels[a].isChanMember(_clients[u].getNickName())) {
@@ -428,7 +428,6 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
     if (mode[i] == '+' && mode[i + 1] == 'k') {         // +k mode, sets the channel key
         if (_channels[a].getChanKey()[0]) return (ERR_KEYSET);
         if (i == strlen(mode)) return (ERR_NEEDMOREPARAMS);
-        // _channels[a].addChanMode("+k");
         _channels[a].setChanKey(tempChanMode.substr(i + 3, tempChanMode.length()));
         return ("channel key set to " + tempChanMode.substr(i + 3, tempChanMode.length()));
     }
@@ -436,8 +435,6 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
         if (!_channels[a].getChanKey()[0]) return ("channel key is not set");
         if (i == strlen(mode)) return (ERR_NEEDMOREPARAMS);
         if (!stringCompareTheReturn(tempChanMode.substr(i + 3, tempChanMode.length()), _channels[a].getChanKey())) {
-            // _channels[a].removeChanMode("+k");
-            // _channels[a].addChanMode("-k");
             _channels[a].setChanKey({'\0'});
             return ("channel key unset");
         } else return (ERR_PASSWDMISMATCH);
@@ -567,13 +564,13 @@ std::string Server::handleInviteCommand(Client &c, char * invite) {             
     tempChanInvite.erase(0, 1);
     if (!tempChanInvite[0]) return (ERR_NEEDMOREPARAMS);
     if (_channels[a].isChanMember(tempChanInvite)) return (ERR_USERONCHANNEL);
+    if (_channels[a].isAlreadyInvited(tempChanInvite)) return (tempChanInvite + " has already received an invitation to join " + _channels[a].getChanName());
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!stringCompareTheReturn(tempChanInvite, _clients[i].getNickName())) {
-            if (!_channels[a].isAlreadyInvited(tempChanInvite)) {
                 _channels[a].addNnameToInviteList(tempChanInvite);
                 sendGoodMessage(_clients[i].getSocketFd(), "you were invited to join the channel " + _channels[a].getChanName(), _clients[i].getNickName());
                 return (tempChanInvite + " was invited to join the channel " + _channels[a].getChanName());
-            } else return (_clients[i].getNickName() + " has already received an invitation to join " + _channels[a].getChanName());
+            continue ;
         }
         continue ;
     }

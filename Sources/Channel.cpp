@@ -87,6 +87,7 @@ int Channel::fullChan(void) {
 
 int Channel::isAlreadyInvited(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
+        std::cout<<_inviteList[i]<<std::endl;
         if (!stringCompareTheReturn(nname, _inviteList[i])) return (1);
         continue;
     }
@@ -111,7 +112,7 @@ int Channel::isChanOp(std::string nname) {
 
 void    Channel::removeChanMember(std::string nname) {
     for (int i = 0; i < _chanSize; i++) {
-        if (!stringCompareTheReturn(nname, _chanMembers[i])) {_chanMembers[i].clear(); return ;}
+        if (!stringCompareTheReturn(nname, _chanMembers[i])) {_chanMembers[i] = {'\0'}; return ;}
         continue;
     }
 }
@@ -125,7 +126,7 @@ void    Channel::removeChanOp(std::string nname) {
 
 void    Channel::removeNnameFromInviteList(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
-        if (!stringCompareTheReturn(nname, _inviteList[i])) {_inviteList[i].clear(); return ;}
+        if (!stringCompareTheReturn(nname, _inviteList[i])) {_inviteList[i] = {'\0'};}
         continue ;
     }
 }
