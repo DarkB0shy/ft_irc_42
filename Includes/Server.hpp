@@ -24,7 +24,7 @@
 #define UNAME_OK "username set"
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
-#define RPL_CREATED "this server was created on new year's eve"
+#define RPL_CREATED "this server was created on 2024 new year's eve"
 #define RPL_MYINFO "<ircserv> <version 0> <available user modes: join, nick, privmsg, topic (if allowed by chan ops)> <available channel modes (only for chan ops): invite, kick, mode (i, t, k, o, l), topic>"
 #define RPL_NO_TOPIC "no topic set yet"
 #define RPL_TOPIC "the topic of the channel is "

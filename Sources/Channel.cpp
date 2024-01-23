@@ -87,8 +87,7 @@ int Channel::fullChan(void) {
 
 int Channel::isAlreadyInvited(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
-        std::cout<<_inviteList[i]<<std::endl;
-        if (!stringCompareTheReturn(nname, _inviteList[i])) return (1);
+                if (!stringCompareTheReturn(nname, _inviteList[i])) return (1);
         continue;
     }
     return (0);
