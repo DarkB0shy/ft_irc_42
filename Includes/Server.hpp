@@ -5,7 +5,7 @@
 #define MAXCHANS 2
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
-#define CLOSEDCONN "Connection closed from (ip, port): "
+
 #define BUFFASIZE 1025
 #define WRONGARGS "usage: ./ircserv #port connection_psswd"
 #define WRONGPORT "the #port is invalid"
@@ -18,13 +18,13 @@
 #define NEWCONNERR "could not establish new connection"
 #define OUTERR "could not send message"
 #define READERR "could not read message"
-
+#define CLOSEDCONN "Connection closed from (ip, port): "
 #define PSSWD_OK "password correct"
 #define NNAME_OK "nickname set"
 #define UNAME_OK "username set"
 #define RPL_WELCOME "welcome to the Internet Relay Network"
 #define RPL_YOURHOST "your host is ircserv"
-#define RPL_CREATED "this server was created on 2024 new year's eve"
+#define RPL_CREATED "this server was created on new year's eve"
 #define RPL_MYINFO "<ircserv> <version 0> <available user modes: join, nick, privmsg, topic (if allowed by chan ops)> <available channel modes (only for chan ops): invite, kick, mode (i, t, k, o, l), topic>"
 #define RPL_NO_TOPIC "no topic set yet"
 #define RPL_TOPIC "the topic of the channel is "
@@ -65,10 +65,10 @@
 #include "Utils.hpp"
 #include "Message.hpp"
 #include <arpa/inet.h>                          // inetitoa, ntohs, ...
-#include <csignal>
 #include <fcntl.h>
 #include <netinet/in.h>		                    // holds the struct sockaddr_in
 #include <sys/select.h>                         // FD_ZERO, ...
+#include <csignal>
 #include <unistd.h>
 
 typedef struct	s_socket {
@@ -102,6 +102,7 @@ class   Server {
         int         getNewChanIndex(void);
         int         getSocket(void) const;
         void        handleClientInput(Client &c);
+        void        handleClosedConnection(Client &c);
         std::string handleInviteCommand(Client &c, char * invite);
         std::string handleJoinCommand(Client &c, char * join);
         std::string handleKickCommand(Client &c, char * nick);
@@ -116,7 +117,7 @@ class   Server {
 		void        initClients(void);
         void        resetSocketSet(void);
         void        runServer(void);
-        void        sendGoodMessage(int sfd, std::string sReply, std::string nname);
+        void        sendServerMessage(int sfd, std::string sReply, std::string nname);
         void        sendJoinNotice(int a, Client &c, std::string tempChanName);
         void        sendMessage(int sfd, const std::string &message);
         void        sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c);

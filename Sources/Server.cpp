@@ -26,13 +26,13 @@ void    Server::startServer(void) {
     _address.sin_addr.s_addr = INADDR_ANY;                                                      // this allows connections from every network interface available
     _address.sin_port = htons(_portNumber);
     _addrlen = sizeof(_address);
-    if (bind(_socket, (struct sockaddr *)&_address, _addrlen) < 0) std_errore(PORTNOTBINDED);
-    if (listen(_socket, MAXCLIENTS) < 0) std_errore(NOTLISTENING);
+    if (bind(_socket, (struct sockaddr *)&_address, _addrlen) < 0) std_errore(PORTNOTBINDED);   // "opens" the port
+    if (listen(_socket, MAXCLIENTS) < 0) std_errore(NOTLISTENING);                              // puts the server socket in "passive mode", it is going to wait to connect with other sockets through accept()
     initClients();
     std::cout<<WELCOMETOSERVER<<_portNumber<<std::endl;
 }
 
-void    Server::resetSocketSet (void) {
+void    Server::resetSocketSet (void) {                     // according to man page, while handling fd sets inside a loop with select those fds to be reinitialized at the beginning of the loop. This is not needed if you use poll/epoll 
     int clientFd;
     FD_ZERO(&_readFds);                                     // Clears socket set
     FD_SET(this->getSocket(), &_readFds);                   // Adds server socket to the set
@@ -40,7 +40,7 @@ void    Server::resetSocketSet (void) {
     for (int i = 0; i < MAXCLIENTS; i++) {
         clientFd = _clients[i].getSocketFd();
         if (clientFd > 0) FD_SET(clientFd, &_readFds);      // If its a valid fd it is added to the set
-        if (clientFd > _maxFd) _maxFd = clientFd;           // The highest Fd is needed for select()
+        if (clientFd > _maxFd) _maxFd = clientFd;           // The highest Fd is needed for select(): all of the fds up to maxFd + 1 are checked
     }
 }
 
@@ -60,16 +60,16 @@ void    Server::handleNewConnection(void) {
 
 void    Server::runServer(void) {
     resetSocketSet();
-    if (select(_maxFd + 1, &_readFds, NULL, NULL, NULL) == -1) std_errore(FDSETERROR);                                          // Waits for any I/O operation from the set of fds
+    if (select(_maxFd + 1, &_readFds, NULL, NULL, NULL) == -1) std_errore(FDSETERROR);                                          // Waits for any I/O operation from the set of fds (all fds are monitored up to maxFd + 1)
     if (FD_ISSET(this->getSocket(), &_readFds)) handleNewConnection();                                                          // Checks if the main socket is inside the set, if it is it means there is a new connection
     for (int i = 0; i < MAXCLIENTS; i++) if (FD_ISSET(_clients[i].getSocketFd(), &_readFds)) handleClientInput(_clients[i]);    // If one of the client fds is inside the set it means there is some I/O operation coming through
     for (int i = 0; i < MAXCLIENTS; i++) {                                                                                      // RPL_WELCOME
         if (!_clients[i].getHasBeenWelcomed() && _clients[i].getPsswdGuessed() && _clients[i].getNnameSet() && _clients[i].getUserSet()) {
             _clients[i].setHasBeenWelcomed(1);
-            sendGoodMessage(_clients[i].getSocketFd(), RPL_WELCOME, _clients[i].getNickName());
-            sendGoodMessage(_clients[i].getSocketFd(), RPL_YOURHOST, _clients[i].getNickName());
-            sendGoodMessage(_clients[i].getSocketFd(), RPL_CREATED, _clients[i].getNickName());
-            sendGoodMessage(_clients[i].getSocketFd(), RPL_MYINFO, _clients[i].getNickName());
+            sendServerMessage(_clients[i].getSocketFd(), RPL_WELCOME, _clients[i].getNickName());
+            sendServerMessage(_clients[i].getSocketFd(), RPL_YOURHOST, _clients[i].getNickName());
+            sendServerMessage(_clients[i].getSocketFd(), RPL_CREATED, _clients[i].getNickName());
+            sendServerMessage(_clients[i].getSocketFd(), RPL_MYINFO, _clients[i].getNickName());
             }
         continue ;
     }
@@ -89,11 +89,41 @@ void	Server::sendMessage(int sfd, const std::string &message) {                 
     }
 }
 
-void    Server::sendGoodMessage(int sfd, std::string sReply, std::string nname) {                                // creates the server reply
+void    Server::sendServerMessage(int sfd, std::string sReply, std::string nname) {                                // creates the server reply
     std::string r = "ircserv";
     if (!nname[0]) r = r + " " + sReply + "\r\n";
     else r = r + " " + sReply + " " + nname + "\r\n";
     sendMessage(sfd, r);
+}
+
+void    Server::handleClosedConnection(Client &c) {
+    for (int x = 0; x < MAXCHANS; x++) {                                                                    // a "quit" message is sent to every channel the client was in
+        if (_channels[x].isChanMember(c.getNickName())) {
+            _channels[x].removeChanMember(c.getNickName());
+            if (_channels[x].getChanName()[0]) {
+                std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by";
+                for (int i = 0; i < MAXCLIENTS; i++) {
+                    int tempSock = 0;
+                    if (_channels[x].isChanMember(_clients[i].getNickName())) tempSock = _clients[i].getSocketFd();
+                    if (tempSock) {
+                        if (_channels[x].isChanOp(c.getNickName())) {
+                            sendServerMessage(tempSock, chanLeaveNotice, "@"+ c.getNickName());
+                        } else sendServerMessage(tempSock, chanLeaveNotice, c.getNickName());
+                    }
+                }
+            }
+            _channels[x].removeChanOp(c.getNickName());
+            _channels[x].emptyChan();
+        }
+        continue ;
+    }
+    c.setNickName({'\0'});
+    c.setUserName({'\0'});
+    c.setNnameSet(0);
+    c.setUserSet(0);
+    c.setPsswdGuessed(0);
+    c.setHasBeenWelcomed(0);
+    c.setSocketFd(0);
 }
 
 void    Server::handleClientInput(Client &c) {
@@ -102,31 +132,7 @@ void    Server::handleClientInput(Client &c) {
     if (valread == -1) std_errore(READERR);
     else if (valread == 0) {                                                                                    // valread returns 0 when the connection to the socket is lost
         std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
-        for (int x = 0; x < MAXCHANS; x++) {                                                                    // a "quit" message is sent to every channel the client was in
-            if (_channels[x].isChanMember(c.getNickName())) {
-                _channels[x].removeChanMember(c.getNickName());
-                if (_channels[x].getChanName()[0]) {
-                    std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by";
-                    for (int i = 0; i < MAXCLIENTS; i++) {
-                        int quiteTempSocket = 0;
-                        if (_channels[x].isChanMember(_clients[i].getNickName())) quiteTempSocket = _clients[i].getSocketFd();
-                        if (quiteTempSocket) {
-                            if (_channels[x].isChanOp(c.getNickName())) {
-                                // std::string opChanLeaveNotice = _channels[x].getChanName() + " channel was left by";
-                                sendGoodMessage(quiteTempSocket, chanLeaveNotice, "@"+ c.getNickName());
-                            } else sendGoodMessage(quiteTempSocket, chanLeaveNotice, c.getNickName());
-                        }
-                    }
-                }
-                _channels[x].removeChanOp(c.getNickName());
-                _channels[x].emptyChan();
-            }
-            continue ;
-        }
-        // c.setNickName({'\0'});
-        // c.setUserName({'\0'});
-        c.setSocketFd(0);
-        return ;
+        handleClosedConnection(c);
     }
     else {
         buffa[valread] = '\0';                                                                                // parsing ...
@@ -136,10 +142,12 @@ void    Server::handleClientInput(Client &c) {
         if (!newMssg) return ;
         std::string serverReply;
         int flag = 0;                                                                                             // prefix check
-        if (newMssg->getPrefix()[0]) {
+        
+        // if (newMssg->getPrefix()[0]) {
+        if (buffa[0] == ':') {
             if (!c.getNickName()[0]) flag = 1;
             if (stringCompare(newMssg->getPrefix(), c.getNickName())) flag = 1;
-        }    
+        }
         if (!newMssg->getPrefix()[0] || !flag) {
             if (newMssg->getCommand()[0]) {
                 if (!stringCompare(newMssg->getCommand(), "pass")) { 
@@ -178,19 +186,19 @@ void    Server::handleClientInput(Client &c) {
                 else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
                 else ;
             } else ;
-            if (serverReply[0]) sendGoodMessage(c.getSocketFd(), serverReply, c.getNickName());
+            if (serverReply[0]) sendServerMessage(c.getSocketFd(), serverReply, c.getNickName());
         } else ;
         delete newMssg;
     }
 }
 
 void    Server::sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c) {
-    for (int aaa = 0; aaa < MAXCHANS; aaa++) {                                              // chop notice
-        if (_channels[aaa].getChanName()[0]) {
-            if (!stringCompareTheReturn(_channels[aaa].getChanName(), tempChoppa.substr(0, tempChoppa.find(' ')))) {
-                for (int cioppa = 0; cioppa < MAXCLIENTS; cioppa++) {
-                    if (_clients[cioppa].getNickName()[0] && _channels[aaa].isChanOp(_clients[cioppa].getNickName())) {
-                            sendGoodMessage(_clients[cioppa].getSocketFd(), serverReply, _clients[cioppa].getNickName());
+    for (int i = 0; i < MAXCHANS; i++) {                                              // chop notice
+        if (_channels[i].getChanName()[0]) {
+            if (!stringCompareTheReturn(_channels[i].getChanName(), tempChoppa.substr(0, tempChoppa.find(' ')))) {
+                for (int j = 0; j < MAXCLIENTS; j++) {
+                    if (_clients[j].getNickName()[0] && _channels[i].isChanOp(_clients[j].getNickName())) {
+                            sendServerMessage(_clients[j].getSocketFd(), serverReply, _clients[j].getNickName());
                     }
                     continue ;
                 }
@@ -211,7 +219,10 @@ std::string Server::handlePassCommand(Client &c, char * pass) {
 std::string Server::handleNickCommand(Client &c, char * nick) {
     if (!nick[0]) return (ERR_NONICKNAMEGIVEN);
     int i = 0;
-    while (nick[i]) i++;
+    while (nick[i]) {
+        if (nick[i] == ' ') return (ERR_ERRONEOUSNICKNAME);
+        i++;
+    }
     if (i > 9) return (ERR_ERRONEOUSNICKNAME);                      // nick names can be made up of any character but have a maximum size of 9
     std::string tempStr(nick);
     for (int j = 0; j < MAXCLIENTS; j++) if (!stringCompare(nick, _clients[j].getNickName())) return (ERR_NICKNAMEINUSE);          // it is very common for several people to want the same nickname
@@ -242,12 +253,10 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
     if (privMsg[i] && privMsg[i] == ' ') i++;
     if (!privMsg[i] || privMsg[i] == ' ') return (ERR_NOTEXTTOSEND);
     std::string tempPrivMsg(privMsg);
-    std::string msgDest;
     int         destSocket;
     std::string toSend = c.getNickName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!stringCompareTheReturn(tempPrivMsg.substr(0, tempPrivMsg.find(' ')), _clients[i].getNickName())) {         // this is pretty self explanatory a tegridy check on dest needed to be executed
-            msgDest = _clients[i].getNickName();
             destSocket = _clients[i].getSocketFd();
             sendMessage(destSocket, toSend);
             break;
@@ -263,14 +272,14 @@ std::string Server::handlePrivMsgCommand(Client &c, char * privMsg) {
                         std::string chanMsg = c.getNickName() + _channels[a].getChanName() + " privmsg " +  + ":" + tempPrivMsg.substr(tempPrivMsg.find(' '), tempPrivMsg.length()) + "\r\n\0";
                         for (int b = 0; b < MAXCLIENTS; b++) {
                             if (_channels[a].isChanMember(_clients[b].getNickName())) {
-                                int veryTempSocket = 0;
-                                veryTempSocket = _clients[b].getSocketFd();       // saves the socket of every client connected to chan
+                                int tempSock = 0;
+                                tempSock = _clients[b].getSocketFd();       // saves the socket of every client connected to chan
                                 if (_channels[a].isChanOp(c.getNickName())) {
                                     std::string opChanMsg = "@" + chanMsg;
-                                    if (veryTempSocket) sendMessage(veryTempSocket, opChanMsg);
+                                    if (tempSock) sendMessage(tempSock, opChanMsg);
                                 }
                                 else if (!_channels[a].isChanOp(c.getNickName()) && _channels[a].isChanMember(c.getNickName())) {
-                                    if (veryTempSocket) sendMessage(veryTempSocket, chanMsg);
+                                    if (tempSock) sendMessage(tempSock, chanMsg);
                                 }
                             }
                         }
@@ -297,13 +306,12 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
                 if (_channels[d].getChanName()[0]) {
                     std::string chanLeaveNotice = _channels[d].getChanName() + " channel was left by";
                     for (int aa = 0; aa < MAXCLIENTS; aa++) {
-                        int extremelyTempSocket = 0;
-                        if (_channels[d].isChanMember(_clients[aa].getNickName())) extremelyTempSocket = _clients[aa].getSocketFd();
-                        if (extremelyTempSocket) {
+                        int tempSock = 0;
+                        if (_channels[d].isChanMember(_clients[aa].getNickName())) tempSock = _clients[aa].getSocketFd();
+                        if (tempSock) {
                             if (_channels[d].isChanOp(c.getNickName())) {
-                                std::string opChanLeaveNotice = _channels[d].getChanName() + " channel was left by";
-                                sendGoodMessage(extremelyTempSocket, opChanLeaveNotice, "@" + c.getNickName());
-                            } else sendGoodMessage(extremelyTempSocket, chanLeaveNotice, c.getNickName());
+                                sendServerMessage(tempSock, chanLeaveNotice, "@" + c.getNickName());
+                            } else sendServerMessage(tempSock, chanLeaveNotice, c.getNickName());
                         }
                     }
                 }
@@ -352,27 +360,27 @@ std::string Server::handleJoinCommand(Client &c, char * join) {
 
 void    Server::sendJoinNotice(int a, Client &c, std::string tempChanName) {
     _channels[a].removeNnameFromInviteList(c.getNickName());
-    std::string joinChanNotice = tempChanName + " channel was joined by";                               // sends a join notice to every connected user in the channel
+    std::string joinChanNotice = tempChanName + " channel was joined by";                               // sends a join notice to every connected user
     for (int u = 0; u < MAXCLIENTS; u++) {
         if (_channels[a].isChanMember(_clients[u].getNickName())) {
-            int ratherTempSocket = 0;
-            ratherTempSocket = _clients[u].getSocketFd();
-            if (ratherTempSocket) sendGoodMessage(ratherTempSocket, joinChanNotice, c.getNickName());
+            int tempSock = 0;
+            tempSock = _clients[u].getSocketFd();
+            if (tempSock) sendServerMessage(tempSock, joinChanNotice, c.getNickName());
         }
     }
     _channels[a].addChanMember(c.getNickName());
-    if (!_channels[a].getChanTopic()[0]) sendGoodMessage(c.getSocketFd(), RPL_NO_TOPIC, c.getNickName());        // tells the new chan member about the topic if there is one
+    if (!_channels[a].getChanTopic()[0]) sendServerMessage(c.getSocketFd(), RPL_NO_TOPIC, c.getNickName());        // tells the new chan member about the topic if there is one
     else {
         std::string rplTopic = RPL_TOPIC + _channels[a].getChanTopic();
-        sendGoodMessage(c.getSocketFd(), rplTopic, c.getNickName());
+        sendServerMessage(c.getSocketFd(), rplTopic, c.getNickName());
     }
     std::string onlineMembers = RPL_NAMEREPLY;              // tells the user that just joined the channel about other online members
     for (int k = 0; k < MAXCLIENTS; k++) {
-        if (_clients[k].getSocketFd() &&_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
+        if (_channels[a].isChanMember(_clients[k].getNickName())) onlineMembers = onlineMembers + _clients[k].getNickName() + " ";
         continue;
     }
     onlineMembers.erase(onlineMembers.length() - 1, onlineMembers.length());
-    sendGoodMessage(c.getSocketFd(), onlineMembers, c.getNickName());
+    sendServerMessage(c.getSocketFd(), onlineMembers, c.getNickName());
 }
 
 int Server::chanExists(std::string chanName) {
@@ -455,7 +463,7 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
                         check = 1;
                         _channels[a].addChanOp(_clients[j].getNickName());
                         goodModeOReply = goodModeOReply + _clients[j].getNickName() + ", ";
-                        sendGoodMessage(_clients[j].getSocketFd(), "you are now chop of chan " + _channels[a].getChanName(), _clients[j].getNickName());
+                        sendServerMessage(_clients[j].getSocketFd(), "you are now chop of chan " + _channels[a].getChanName(), _clients[j].getNickName());
                     }
                     continue ;
                 }
@@ -483,7 +491,7 @@ std::string Server::handleModeCommandTwo(Client &c, char * mode) {
                         check = 1;
                         _channels[a].removeChanOp(_clients[j].getNickName());
                         goodModeOReply = goodModeOReply + _clients[j].getNickName() + ", ";
-                        sendGoodMessage(_clients[j].getSocketFd(), "you are no longer chop of chan " +_channels[a].getChanName(), _clients[j].getNickName());
+                        sendServerMessage(_clients[j].getSocketFd(), "you are no longer chop of chan " +_channels[a].getChanName(), _clients[j].getNickName());
                     }
                     continue ;
                 }
@@ -568,7 +576,7 @@ std::string Server::handleInviteCommand(Client &c, char * invite) {             
     for (int i = 0; i < MAXCLIENTS; i++) {
         if (!stringCompareTheReturn(tempChanInvite, _clients[i].getNickName())) {
                 _channels[a].addNnameToInviteList(tempChanInvite);
-                sendGoodMessage(_clients[i].getSocketFd(), "you were invited to join the channel " + _channels[a].getChanName(), _clients[i].getNickName());
+                sendServerMessage(_clients[i].getSocketFd(), "you were invited to join the channel " + _channels[a].getChanName(), _clients[i].getNickName());
                 return (tempChanInvite + " was invited to join the channel " + _channels[a].getChanName());
             continue ;
         }
@@ -596,8 +604,8 @@ std::string Server::handleKickCommand(Client &c, char *kick) {                  
             _channels[a].removeChanOp(_clients[i].getNickName());
             tempChanKick.erase(0, tempChanKick.find(' '));
             tempChanKick.erase(0, 1);
-            if (tempChanKick[0]) sendGoodMessage(_clients[i].getSocketFd(), "you were kicked from " + _channels[a].getChanName() + ", and that is because " +tempChanKick, _clients[i].getNickName());
-            else sendGoodMessage(_clients[i].getSocketFd(), "they kicked you from " + _channels[a].getChanName() + ". It was their decision, I don't think you deserved that", _clients[i].getNickName());
+            if (tempChanKick[0]) sendServerMessage(_clients[i].getSocketFd(), "you were kicked from " + _channels[a].getChanName() + ", and that is because " +tempChanKick, _clients[i].getNickName());
+            else sendServerMessage(_clients[i].getSocketFd(), "they kicked you from " + _channels[a].getChanName() + ". It was their decision, I don't think you deserve that", _clients[i].getNickName());
             break ;
         }
         continue ;

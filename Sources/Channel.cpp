@@ -67,10 +67,13 @@ void    Channel::emptyChan(void) {
         else return ;
     }
     for (int a = 0; a < MAX_CHANMEMBERS; a++) _chanMembers[a] = {'\0'};
-    for (int a = 0; a < MAX_CHANMEMBERS; a++) _inviteList[a] = {'\0'};
+    for (int b = 0; b < MAX_CHANOPS; b++) _chanOps[b] = {'\0'};
+    for (int c = 0; c < MAX_CHANMEMBERS; c++) _inviteList[c] = {'\0'};
     _chanName = {'\0'};
     _chanTopic = {'\0'};
     _chanKey = {'\0'};
+    _inviteOnly = 0;
+    _topicOpOnly = 0;
 }
 
 int Channel::fullChan(void) {
@@ -87,7 +90,8 @@ int Channel::fullChan(void) {
 
 int Channel::isAlreadyInvited(std::string nname) {
     for (int i = 0; i < MAX_CHANMEMBERS; i++) {
-                if (!stringCompareTheReturn(nname, _inviteList[i])) return (1);
+        // std::cout<<_inviteList[i]<<std::endl;
+        if (!stringCompareTheReturn(nname, _inviteList[i])) return (1);
         continue;
     }
     return (0);

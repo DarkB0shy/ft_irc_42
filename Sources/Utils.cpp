@@ -112,7 +112,10 @@ int	stringCompare(char * first, std::string second) {
 int	stringCompareTheReturn(std::string first, std::string second) {
 	int	i = 0;
 	if (!first[0] || !second[0]) return (1);
-	while (second[i]) {if (second[i] == first[i]) i++; else return (1);}
+	while (second[i]) {
+        if (!first[i]) return (1);
+        if (second[i] == first[i]) i++; else return (1);
+        }
 	if (first[i] == '\n' || first[i] == '\r' || first[i] == '\0') return (0);
 	return (1);
 }

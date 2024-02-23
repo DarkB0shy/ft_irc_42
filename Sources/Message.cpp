@@ -23,6 +23,9 @@ Message*    Message::splittedMssg(std::string mssg) {                           
     char tempPrefix[15];
     char tempCommand[15];
     char tempParameters[482];
+    tempPrefix[0] = '\0';
+    tempCommand[0] = '\0';
+    tempParameters[0] = '\0';
     int i = 0;
     int j = 0;
     if (mssg[i] == ':') {
