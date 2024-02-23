@@ -50,7 +50,7 @@ There is also a way to represent ipv4 through an ipv6 notation:
   IPV4  192.0.2.33
   IPV4  ::ff:192.0.2.33
 
-The first part of an ip is the "network portion", the remainder is the "host portion".
+The first part of an ip is the "network portion", the rest is the "host portion".
 The network portion is described by a subnet which may look like 255.255.255.0.
 The host portion states the number of subhosts allowed by the network.
 An ipv6 subnet may instead look like this:
