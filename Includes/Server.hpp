@@ -6,7 +6,7 @@
 #define WELCOMETOSERVER "WELCOME! Server listening on port "
 #define CONNHANDLED "New connection from (ip, port): "
 
-#define BUFFASIZE 1025
+#define BUFFASIZE 1024
 #define WRONGARGS "usage: ./ircserv #port connection_psswd"
 #define WRONGPORT "the #port is invalid"
 #define WRONGPASS "invalid password"
@@ -102,6 +102,7 @@ class   Server {
         int         getNewChanIndex(void);
         int         getSocket(void) const;
         void        handleClientInput(Client &c);
+        void        handleClientCommand(Client &c, char buffa[BUFFASIZE]);
         void        handleClosedConnection(Client &c);
         std::string handleInviteCommand(Client &c, char * invite);
         std::string handleJoinCommand(Client &c, char * join);

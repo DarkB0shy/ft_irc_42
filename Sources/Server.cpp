@@ -15,7 +15,7 @@ Server &Server::operator=(const Server &s) {
     return (*this);
 }
 
-int Server::getSocket() const { return (_socket); }
+int Server::getSocket() const {return (_socket);}
 
 void    Server::initClients(void) {for (int i = 0; i < MAXCLIENTS; i++) _clients[i].setSocketFd(0);}
 
@@ -24,7 +24,7 @@ void    Server::startServer(void) {
     if (fcntl(_socket, F_SETFL, O_NONBLOCK) == -1) std_errore(NOSOCKETFLAGS);                   // Sets non-blocking flag
     _address.sin_family = AF_INET;
     _address.sin_addr.s_addr = INADDR_ANY;                                                      // this allows connections from every network interface available
-    _address.sin_port = htons(_portNumber);
+    _address.sin_port = htons(_portNumber);                                                     // converts the short int "_portNumber" from host format (Least Significant Byte) to network format (Most Significant Byte)
     _addrlen = sizeof(_address);
     if (bind(_socket, (struct sockaddr *)&_address, _addrlen) < 0) std_errore(PORTNOTBINDED);   // "opens" the port
     if (listen(_socket, MAXCLIENTS) < 0) std_errore(NOTLISTENING);                              // puts the server socket in "passive mode", it is going to wait to connect with other sockets through accept()
@@ -96,27 +96,45 @@ void    Server::sendServerMessage(int sfd, std::string sReply, std::string nname
     sendMessage(sfd, r);
 }
 
-void    Server::handleClosedConnection(Client &c) {
-    for (int x = 0; x < MAXCHANS; x++) {                                                                    // a "quit" message is sent to every channel the client was in
-        if (_channels[x].isChanMember(c.getNickName())) {
-            _channels[x].removeChanMember(c.getNickName());
-            if (_channels[x].getChanName()[0]) {
-                std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by";
-                for (int i = 0; i < MAXCLIENTS; i++) {
-                    int tempSock = 0;
-                    if (_channels[x].isChanMember(_clients[i].getNickName())) tempSock = _clients[i].getSocketFd();
-                    if (tempSock) {
-                        if (_channels[x].isChanOp(c.getNickName())) {
-                            sendServerMessage(tempSock, chanLeaveNotice, "@"+ c.getNickName());
-                        } else sendServerMessage(tempSock, chanLeaveNotice, c.getNickName());
-                    }
-                }
-            }
-            _channels[x].removeChanOp(c.getNickName());
-            _channels[x].emptyChan();
-        }
-        continue ;
+void    Server::handleClientInput(Client &c) {
+    char    buffa[BUFFASIZE];
+//    int valread = recv(c.getSocketFd(), buffa, BUFFASIZE, MSG_DONTWAIT);                                        // recv with no flags is exaclty like calling read; "MSG_DONTWAIT" enables a single non-blocking operation very similarly to "fcntl(_socket, F_SETFL, O_NONBLOCK)". However fcntl() affects all of the threads in the calling process and other fds that depend on the _socket used in fcntl(). So this is not needed and write can be used instead
+    int valread = read(c.getSocketFd(), buffa, BUFFASIZE);
+    if (valread == -1) std_errore(READERR);
+    else if (valread == 0) {                                                                                    // valread returns 0 when the connection to the socket is lost
+        std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
+        handleClosedConnection(c);
     }
+    else {
+        buffa[valread] = '\0';
+        handleClientCommand(c, buffa);
+    }
+}
+
+void    Server::handleClosedConnection(Client &c) {
+    // for (int x = 0; x < MAXCHANS; x++) {                                                                    // a "quit" message is sent to every channel the client was in
+    //     if (_channels[x].isChanMember(c.getNickName())) {
+    //         _channels[x].removeChanMember(c.getNickName());
+    //         if (_channels[x].getChanName()[0]) {
+    //             std::string chanLeaveNotice = _channels[x].getChanName() + " channel was left by";
+    //             for (int i = 0; i < MAXCLIENTS; i++) {
+    //                 int tempSock = 0;
+    //                 if (_channels[x].isChanMember(_clients[i].getNickName())) tempSock = _clients[i].getSocketFd();
+    //                 if (tempSock) {
+    //                     if (_channels[x].isChanOp(c.getNickName())) {
+    //                         sendServerMessage(tempSock, chanLeaveNotice, "@"+ c.getNickName());
+    //                     } else sendServerMessage(tempSock, chanLeaveNotice, c.getNickName());
+    //                 }
+    //             }
+    //         }
+    //         _channels[x].removeChanOp(c.getNickName());
+    //         _channels[x].emptyChan();
+    //     }
+    //     continue ;
+    // }
+
+    handleJoinCommand(c, (char *)"0");               // the client leaves every channel he was a member of
+
     c.setNickName({'\0'});
     c.setUserName({'\0'});
     c.setNnameSet(0);
@@ -126,71 +144,63 @@ void    Server::handleClosedConnection(Client &c) {
     c.setSocketFd(0);
 }
 
-void    Server::handleClientInput(Client &c) {
-    char    buffa[BUFFASIZE];
-    int valread = recv(c.getSocketFd(), buffa, BUFFASIZE - 1, 0);
-    if (valread == -1) std_errore(READERR);
-    else if (valread == 0) {                                                                                    // valread returns 0 when the connection to the socket is lost
-        std::cout<<CLOSEDCONN<<c.getIpAddress()<<", "<<c.getPort()<<std::endl;
-        handleClosedConnection(c);
+void Server::handleClientCommand(Client &c, char buffa[BUFFASIZE]) {
+    int i = 0; while (buffa[i]) i++; if (i == 1 || i == 2) return ;                                       // empty line check or 1 character line check
+    Message *newMssg;
+    newMssg = newMssg->splittedMssg(buffa);                                                                   // splits the message into (prefix) command and parameters
+    if (!newMssg) return ;
+    std::string serverReply;
+    int flag = 0;                                                                                             // prefix check
+    
+    // if (newMssg->getPrefix()[0]) {
+    if (buffa[0] == ':') {
+        if (!c.getNickName()[0]) flag = 1;
+        if (stringCompare(newMssg->getPrefix(), c.getNickName())) flag = 1;
     }
-    else {
-        buffa[valread] = '\0';                                                                                // parsing ...
-        int i = 0; while (buffa[i]) i++; if (i == 1 || i == 2) return ;                                       // empty line check or 1 character line check
-        Message *newMssg;
-        newMssg = newMssg->splittedMssg(buffa);                                                                   // splits the message into (prefix) command and parameters
-        if (!newMssg) return ;
-        std::string serverReply;
-        int flag = 0;                                                                                             // prefix check
-        
-        // if (newMssg->getPrefix()[0]) {
-        if (buffa[0] == ':') {
-            if (!c.getNickName()[0]) flag = 1;
-            if (stringCompare(newMssg->getPrefix(), c.getNickName())) flag = 1;
-        }
-        if (!newMssg->getPrefix()[0] || !flag) {
-            if (newMssg->getCommand()[0]) {
-                if (!stringCompare(newMssg->getCommand(), "pass")) { 
-                    serverReply = handlePassCommand(c, newMssg->getParameters());                                   // pass command
+    if (!newMssg->getPrefix()[0] || !flag) {
+        if (newMssg->getCommand()[0]) {
+            if (!stringCompare(newMssg->getCommand(), "pass")) { 
+                serverReply = handlePassCommand(c, newMssg->getParameters());                                   // pass command
+            }
+            else if (!stringCompare(newMssg->getCommand(), "nick")) {
+                serverReply = handleNickCommand(c, newMssg->getParameters());                                   // nick command
+            }
+            else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command
+                serverReply = handleUserCommand(c, newMssg->getParameters());
+            }
+            else if (!stringCompare(newMssg->getCommand(), "privmsg")) {                                        // privmsg command
+                serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
+            }
+            else if (!stringCompare(newMssg->getCommand(), "join")) {                                               // join command
+                serverReply = handleJoinCommand(c, newMssg->getParameters());
+            }
+            else if (!stringCompare(newMssg->getCommand(), "mode")) {                                       // mode command (only for chops)
+                serverReply = handleModeCommandOne(c, newMssg->getParameters());
+                if (!stringCompareTheReturn("CHAN OP", serverReply)) {
+                    serverReply = handleModeCommandTwo(c, newMssg->getParameters());
+                    std::string tempChoppa(newMssg->getParameters());
+                    sendOpNotice(tempChoppa, serverReply, c);
+                    return ;
                 }
-                else if (!stringCompare(newMssg->getCommand(), "nick")) {
-                    serverReply = handleNickCommand(c, newMssg->getParameters());                                   // nick command
-                }
-                else if (!stringCompare(newMssg->getCommand(), "user")) {                                           // user command
-                    serverReply = handleUserCommand(c, newMssg->getParameters());
-                }
-                else if (!stringCompare(newMssg->getCommand(), "privmsg")) {                                        // privmsg command
-                    serverReply = handlePrivMsgCommand(c, newMssg->getParameters());
-                }
-                else if (!stringCompare(newMssg->getCommand(), "join")) {                                               // join command
-                    serverReply = handleJoinCommand(c, newMssg->getParameters());
-                }
-                else if (!stringCompare(newMssg->getCommand(), "mode")) {                                       // mode command (only for chops)
-                    serverReply = handleModeCommandOne(c, newMssg->getParameters());
-                    if (!stringCompareTheReturn("CHAN OP", serverReply)) {
-                        serverReply = handleModeCommandTwo(c, newMssg->getParameters());
-                        std::string tempChoppa(newMssg->getParameters());
-                        sendOpNotice(tempChoppa, serverReply, c);
-                        return ;
-                    }
-                }
-                else if (!stringCompare(newMssg->getCommand(), "topic")) {                                        // topic command
-                    serverReply = handleTopicCommand(c, newMssg->getParameters());
-                }
-                else if (!stringCompare(newMssg->getCommand(), "invite")) {
-                    serverReply = handleInviteCommand(c, newMssg->getParameters());
-                }
-                else if (!stringCompare(newMssg->getCommand(), "kick")) {
-                    serverReply = handleKickCommand(c, newMssg->getParameters());
-                }
-                else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
-                else ;
-            } else ;
-            if (serverReply[0]) sendServerMessage(c.getSocketFd(), serverReply, c.getNickName());
+            }
+            else if (!stringCompare(newMssg->getCommand(), "topic")) {                                        // topic command
+                serverReply = handleTopicCommand(c, newMssg->getParameters());
+            }
+            else if (!stringCompare(newMssg->getCommand(), "invite")) {
+                serverReply = handleInviteCommand(c, newMssg->getParameters());
+            }
+            else if (!stringCompare(newMssg->getCommand(), "kick")) {
+                serverReply = handleKickCommand(c, newMssg->getParameters());
+            }
+            else if (c.getHasBeenWelcomed()) serverReply = ERR_UNKOWNCOMMAND;
+            else ;
         } else ;
-        delete newMssg;
-    }
+        if (serverReply[0]) sendServerMessage(c.getSocketFd(), serverReply, c.getNickName());
+    } else ;
+    delete newMssg;
 }
+
+                                                    //  COMMANDS
 
 void    Server::sendOpNotice(std::string tempChoppa, std::string serverReply, Client &c) {
     for (int i = 0; i < MAXCHANS; i++) {                                              // chop notice
