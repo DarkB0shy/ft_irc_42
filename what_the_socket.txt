@@ -1,0 +1,67 @@
+                                                                          WHAT THE SOCKET
+
+Sockets are a way to speak to other programs through standard Unix file descriptors. Any I/O
+operation done by Unix programs happens by writing or reading from a fd which is in fact
+an integer associated with an open file. The thing is that file can even be a network connection.
+So in order to communicate with another program through the internet you are going to need a fd.
+You get file descriptors for network communications by making a call to socket(). You can 
+communicate with that fd with the "special" functions send and recv. They have a man page.
+What you could do is use read() and write() to perform I/O operations on those sockets, but 
+send() and recv() are made exclusively for sockets.
+
+Internet sockets are used over the internet, the so called "DARPA Internet Addresses".
+There are a number of sockets, however:
+"SOCK_STREAM" Stream sockets
+  These offer a reliable two-way connectected communication stream. They are bound to be
+  error free. This is because every character written must arrive in the correct order to the
+  receiver, according to the TCP protocol (RFC 793) (see RFC 791 for IP) (IP is mainly 
+  responsable for Internet routing, not for data integrity).
+"SOCK_DGRAM" Datagram sockets, also called connectionless sockets
+  If you send a datagram, it may arrive or it may arrive out of order. But, when it will arrive,
+  I swear it gon be error free. Datagram sockets also use IP for routing but they use UDP
+  (RFC 768) instead of TCP. They are connectionless as they dont need to maintain an open
+  connection. You build a packet, put an IP header on it with destination info and send it out.
+  The main reason to choose UDP over TCP is speed.
+"Raw Sockets" are also very powerful.
+
+Data encapsulation may look like so:
+
+  ETHERNET -> IP -> UDP -> SSH -> DATA
+
+Something about ipv6 and subnets
+
+ipv6 was introduced as ipv4 ips were about to run out. The old notation was replaced by 
+hexadecimal values of 2 bytes each separated by ":", like this one:
+
+  2001:0db8:c9d2:aee5:7323:9341:a5ae:9551
+
+Also these two ipv6 are identical:
+
+  2001:0db8:0000:0000:0000:0000:0000:9551
+  2001:0db8::9551
+
+Additionally the "loopback address", 127.0.0.1 in ipv4 is this one:
+
+  0000:0000:0000:0000:0000:0000:0000:0001
+  ::1
+
+There is also a way to represent ipv4 through an ipv6 notation:
+
+  IPV4  192.0.2.33
+  IPV4  ::ff:192.0.2.33
+
+The first part of an ip is the "network portion", the rest is the "host portion".
+The network portion is described by a subnet which may look like 255.255.255.0.
+The host portion states the number of subhosts allowed by the network.
+An ipv6 subnet may instead look like this:
+
+  2001:db8::/32
+
+Something about port numbers
+
+Another address used by the TCP protocol is the port number, a 16-bit number that somehow
+represents the local address for the connection. If the IP address is the street address
+of an hotel then the port number could be the room number. I said it.
+Different services over the internet use different well known port numbers. The official list
+is the "IANA port list", IANA stands for Internet Assigned Numbers Authority. But if you have
+a Unix system you can $cat /etc/services | less

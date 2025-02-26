@@ -1,0 +1,8 @@
+datatracker.ietf.org/doc/html/rfc2810
+datatracker.ietf.org/doc/html/rfc2811
+datatracker.ietf.org/doc/html/rfc2812
+datatracker.ietf.org/doc/html/rfc2813
+
+ibm.com/docs/en/zos/2.2.0?topic=concepts-understanding-sockets
+
+"Beej's Guide to Network Programming Using Internet Sockets" Brian "Beej Jorgensen" Hall 2023
