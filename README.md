@@ -11,7 +11,17 @@ fcntl(_socket, F_SETFL, O_NONBLOCK) // ./Sources/Server.cpp line 24
 
 Clients can both talk to each other directly and through channels. A Channel is a "group" with a common topic of
 online registered users; there are also super-users (chan-ops) that can moderate the channel. There are at least 4 types of IRC channels, but this is just one local server, so only local channels are implemented. Their name must start with {&} as according to IRC-CHAN.
-To use this program just run the Makefile, launch the server and connect to it with a TCP client like Netcat.
+
+To use this program just run the Makefile, launch the server and connect to it with a TCP client like Netcat this way:
+
+$make
+
+$./ircserv 6667 pswd
+
+Then open a new terminal and connect to your localhost:
+
+$nc localhost 6667
+
 In order to register and use all of the available commands, any client has to first guess the password, set a nickname and a username. Every command demanded by the subject is as loyal as possible to the definition
 held in the RFC's:
 
